@@ -16,6 +16,13 @@ func load(t *testing.T, seed []model.Target) *Store {
 	return s
 }
 
+func TestListNeverNil(t *testing.T) {
+	t.Setenv(storage.EnvDataDir, t.TempDir())
+	if got := load(t, nil).List(); got == nil {
+		t.Fatal("List() on empty store returned nil")
+	}
+}
+
 func TestSeedAndPersistence(t *testing.T) {
 	t.Setenv(storage.EnvDataDir, t.TempDir())
 

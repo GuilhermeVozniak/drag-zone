@@ -103,7 +103,8 @@ func (r *Registry) Get(id string) (Action, error) {
 	return a, nil
 }
 
-// Specs lists all registered action specs in registration order.
+// Specs lists all registered action specs in registration order. It never
+// returns nil so the value marshals to a JSON array for the frontend.
 func (r *Registry) Specs() []model.ActionSpec {
 	specs := make([]model.ActionSpec, 0, len(r.order))
 	for _, id := range r.order {

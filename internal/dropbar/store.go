@@ -47,10 +47,14 @@ func Load() (*Store, error) {
 	return &Store{items: items}, nil
 }
 
-// List returns all items, oldest first.
+// List returns all items, oldest first. It never returns nil, so the value
+// marshals to a JSON array (not null) for the frontend.
 func (s *Store) List() []Item {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if len(s.items) == 0 {
+		return []Item{}
+	}
 	return slices.Clone(s.items)
 }
 

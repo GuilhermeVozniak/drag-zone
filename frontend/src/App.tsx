@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { backend, events } from "@/lib/backend"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { PopoutBar } from "@/features/dropbar/PopoutBar"
 import { GridPanel } from "@/features/grid/GridPanel"
@@ -26,15 +27,17 @@ function App() {
 
   return (
     <div className="dark h-screen">
-      <TooltipProvider delayDuration={400}>
-        {poppedOut ? (
-          <PopoutBar />
-        ) : (
-          <GridPanel onOpenSettings={() => setSettingsOpen(true)} />
-        )}
-        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
-        <InputRequestDialog />
-      </TooltipProvider>
+      <ErrorBoundary>
+        <TooltipProvider delayDuration={400}>
+          {poppedOut ? (
+            <PopoutBar />
+          ) : (
+            <GridPanel onOpenSettings={() => setSettingsOpen(true)} />
+          )}
+          <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+          <InputRequestDialog />
+        </TooltipProvider>
+      </ErrorBoundary>
     </div>
   )
 }

@@ -48,7 +48,12 @@ func (s *Store) List() []model.Target {
 	return s.sorted()
 }
 
+// sorted returns the targets ordered by position. It never returns nil, so
+// the value marshals to a JSON array (not null) for the frontend.
 func (s *Store) sorted() []model.Target {
+	if len(s.targets) == 0 {
+		return []model.Target{}
+	}
 	out := slices.Clone(s.targets)
 	slices.SortStableFunc(out, func(a, b model.Target) int { return a.Position - b.Position })
 	return out

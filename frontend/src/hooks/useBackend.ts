@@ -9,12 +9,17 @@ import {
   type TaskState,
 } from "@/lib/backend"
 
+// arr coerces a possibly-null binding result into an array. Go marshals an
+// empty slice as null unless the backend guards against it; this keeps the
+// UI resilient regardless.
+const arr = <T,>(v: T[] | null | undefined): T[] => v ?? []
+
 /** Live grid targets, updated via backend events. */
 export function useTargets(): Target[] {
   const [targets, setTargets] = useState<Target[]>([])
   useEffect(() => {
-    backend.grid.list().then(setTargets)
-    return events.onGridChanged(setTargets)
+    backend.grid.list().then((v) => setTargets(arr(v)))
+    return events.onGridChanged((v) => setTargets(arr(v)))
   }, [])
   return targets
 }
@@ -23,8 +28,8 @@ export function useTargets(): Target[] {
 export function useTasks(): TaskState[] {
   const [tasks, setTasks] = useState<TaskState[]>([])
   useEffect(() => {
-    backend.tasks.list().then(setTasks)
-    return events.onTasksChanged(setTasks)
+    backend.tasks.list().then((v) => setTasks(arr(v)))
+    return events.onTasksChanged((v) => setTasks(arr(v)))
   }, [])
   return tasks
 }
@@ -33,8 +38,8 @@ export function useTasks(): TaskState[] {
 export function useDropBar(): DropBarItem[] {
   const [items, setItems] = useState<DropBarItem[]>([])
   useEffect(() => {
-    backend.dropBar.list().then(setItems)
-    return events.onDropBarChanged(setItems)
+    backend.dropBar.list().then((v) => setItems(arr(v)))
+    return events.onDropBarChanged((v) => setItems(arr(v)))
   }, [])
   return items
 }
@@ -43,8 +48,8 @@ export function useDropBar(): DropBarItem[] {
 export function useActionSpecs(): ActionSpec[] {
   const [specs, setSpecs] = useState<ActionSpec[]>([])
   useEffect(() => {
-    backend.actions.specs().then(setSpecs)
-    return events.onSpecsChanged(setSpecs)
+    backend.actions.specs().then((v) => setSpecs(arr(v)))
+    return events.onSpecsChanged((v) => setSpecs(arr(v)))
   }, [])
   return specs
 }

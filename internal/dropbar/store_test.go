@@ -16,6 +16,15 @@ func load(t *testing.T) *Store {
 	return s
 }
 
+func TestListNeverNil(t *testing.T) {
+	t.Setenv(storage.EnvDataDir, t.TempDir())
+	// An empty store must return a non-nil slice so it marshals to a JSON
+	// array, not null (which would crash the frontend on .length).
+	if got := load(t).List(); got == nil {
+		t.Fatal("List() on empty store returned nil")
+	}
+}
+
 func TestAddLabelsAndStacks(t *testing.T) {
 	t.Setenv(storage.EnvDataDir, t.TempDir())
 	s := load(t)
