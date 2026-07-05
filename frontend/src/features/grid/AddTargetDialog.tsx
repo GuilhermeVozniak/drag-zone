@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ActionSpec, Target } from "@/lib/backend"
 import { backend } from "@/lib/backend"
-import { ActionIcon } from "@/components/ActionIcon"
+import { ActionTileIcon } from "@/components/ActionIcon"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -20,6 +20,8 @@ interface AddTargetDialogProps {
   specs: ActionSpec[]
   /** When set, the dialog edits this target instead of adding a new one. */
   editing?: Target | null
+  /** Skip the catalogue and configure this action directly. */
+  initialSpecId?: string | null
 }
 
 export function AddTargetDialog({
@@ -27,6 +29,7 @@ export function AddTargetDialog({
   onOpenChange,
   specs,
   editing,
+  initialSpecId,
 }: AddTargetDialogProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [label, setLabel] = useState("")
@@ -35,12 +38,13 @@ export function AddTargetDialog({
 
   useEffect(() => {
     if (open) {
-      setSelectedId(editing?.actionId ?? null)
-      setLabel(editing?.label ?? "")
+      const specId = editing?.actionId ?? initialSpecId ?? null
+      setSelectedId(specId)
+      setLabel(editing?.label ?? specs.find((s) => s.id === specId)?.name ?? "")
       setShortcut(editing?.shortcut ?? "")
       setValues(editing?.options ?? {})
     }
-  }, [open, editing])
+  }, [open, editing, initialSpecId, specs])
 
   const spec = useMemo(
     () => specs.find((s) => s.id === selectedId),
@@ -95,12 +99,11 @@ export function AddTargetDialog({
                   }}
                   className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-white/[0.08]"
                 >
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.07]">
-                    <ActionIcon
-                      icon={s.icon}
-                      className={s.icon.startsWith("data:") ? "size-6" : "size-4.5"}
-                    />
-                  </div>
+                  <ActionTileIcon
+                    actionId={s.id}
+                    icon={s.icon}
+                    className="size-9 shrink-0"
+                  />
                   <div className="min-w-0">
                     <p className="text-xs font-medium">{s.name}</p>
                     <p className="truncate text-[11px] text-neutral-500">

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"strconv"
 	"strings"
 
@@ -47,17 +48,23 @@ func parseFKey(shortcut string) int {
 	return n
 }
 
-// FileIcon returns the Finder icon for a path as a base64 PNG (cached for
-// the app's lifetime; icons are small and paths few).
+// FileIcon returns an image for a path as a base64 PNG (cached for the
+// app's lifetime): a QuickLook content preview for regular files that have
+// one (images, PDFs, videos), otherwise the Finder icon.
 func (a *App) FileIcon(path string) string {
 	a.iconMu.Lock()
 	defer a.iconMu.Unlock()
 	if icon, ok := a.iconCache[path]; ok {
 		return icon
 	}
-	icon, err := platform.FileIconPNGBase64(path, 64)
-	if err != nil {
-		icon = ""
+	var icon string
+	if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+		icon, _ = platform.FileThumbnailPNGBase64(path, 64)
+	}
+	if icon == "" {
+		if fallback, err := platform.FileIconPNGBase64(path, 64); err == nil {
+			icon = fallback
+		}
 	}
 	a.iconCache[path] = icon
 	return icon

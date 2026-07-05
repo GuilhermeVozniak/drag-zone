@@ -1,6 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #import <ImageIO/ImageIO.h>
+#import <QuickLookThumbnailing/QuickLookThumbnailing.h>
 #import <ServiceManagement/ServiceManagement.h>
 #include "bridge_darwin.h"
 
@@ -9,6 +10,7 @@ extern void goStatusDropped(const char *pathsJSON);
 extern void goDragSessionEnded(bool completed);
 extern void goOpenSettings(void);
 extern void goGridVisibility(bool visible);
+extern void goGridBeak(double x);
 
 static NSStatusItem *statusItem = nil;
 static NSWindow *gridWindow = nil;
@@ -83,11 +85,16 @@ static void showGridInternal(bool activate) {
     CGFloat x = NSMidX(anchor) - win.frame.size.width / 2.0;
     NSRect visible = screen.visibleFrame;
     x = MAX(NSMinX(visible) + 8, MIN(x, NSMaxX(visible) - win.frame.size.width - 8));
-    [win setFrameTopLeftPoint:NSMakePoint(x, NSMinY(anchor) - 6)];
+    [win setFrameTopLeftPoint:NSMakePoint(x, NSMinY(anchor) - 2)];
     [win makeKeyAndOrderFront:nil];
     if (activate) {
         [NSApp activateIgnoringOtherApps:YES];
     }
+    // Tell the frontend where the status icon sits relative to the window so
+    // the popover beak can point at it (the window may be clamped at screen
+    // edges).
+    goGridBeak(NSMidX(anchor) - x);
+    statusItem.button.highlighted = YES;
     goGridVisibility(true);
 }
 
@@ -102,6 +109,7 @@ void dz_hide_grid(void) {
         NSWindow *win = findGridWindow();
         if (win != nil && win.isVisible) {
             [win orderOut:nil];
+            statusItem.button.highlighted = NO;
             goGridVisibility(false);
         }
     });
@@ -112,6 +120,7 @@ void dz_toggle_grid(void) {
         NSWindow *win = findGridWindow();
         if (win != nil && win.isVisible) {
             [win orderOut:nil];
+            statusItem.button.highlighted = NO;
             goGridVisibility(false);
         } else {
             showGridInternal(true);
@@ -255,7 +264,60 @@ int dz_airdrop(const char *pathsJSON) {
     return 0;
 }
 
-// --- File icons ---------------------------------------------------------
+// --- File icons & thumbnails ---------------------------------------------
+
+// pngBase64FromImage renders an NSImage into a base64 PNG at up to
+// size*size points, preserving aspect ratio. Returns malloc'd string or NULL.
+static char *pngBase64FromImage(NSImage *image, int size) {
+    if (image == nil || image.size.width <= 0 || image.size.height <= 0) {
+        return NULL;
+    }
+    CGFloat scale = MIN(size / image.size.width, size / image.size.height);
+    NSSize target = NSMakeSize(image.size.width * scale, image.size.height * scale);
+    NSImage *resized = [[NSImage alloc] initWithSize:target];
+    [resized lockFocus];
+    [image drawInRect:NSMakeRect(0, 0, target.width, target.height)
+             fromRect:NSZeroRect
+            operation:NSCompositingOperationCopy
+             fraction:1.0];
+    [resized unlockFocus];
+    CGImageRef cg = [resized CGImageForProposedRect:NULL context:nil hints:nil];
+    if (cg == NULL) {
+        return NULL;
+    }
+    NSBitmapImageRep *rep = [[NSBitmapImageRep alloc] initWithCGImage:cg];
+    rep.size = target;
+    NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+    if (png == nil) {
+        return NULL;
+    }
+    return strdup([png base64EncodedStringWithOptions:0].UTF8String);
+}
+
+char *dz_file_thumbnail_png_base64(const char *cpath, int size) {
+    if (@available(macOS 10.15, *)) {
+        NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:cpath]];
+        QLThumbnailGenerationRequest *req = [[QLThumbnailGenerationRequest alloc]
+            initWithFileAtURL:url
+                         size:CGSizeMake(size, size)
+                        scale:2.0
+          representationTypes:QLThumbnailGenerationRequestRepresentationTypeThumbnail];
+        dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+        __block char *result = NULL;
+        [QLThumbnailGenerator.sharedGenerator
+            generateBestRepresentationForRequest:req
+                               completionHandler:^(QLThumbnailRepresentation *thumb, NSError *error) {
+                                   if (thumb != nil) {
+                                       result = pngBase64FromImage(thumb.NSImage, size);
+                                   }
+                                   dispatch_semaphore_signal(sem);
+                               }];
+        // Bounded wait: thumbnailing a huge video must not hang a drop.
+        dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)));
+        return result;
+    }
+    return NULL;
+}
 
 char *dz_file_icon_png_base64(const char *cpath, int size) {
     NSString *path = [NSString stringWithUTF8String:cpath];

@@ -2,7 +2,7 @@ package platform
 
 /*
 #cgo CFLAGS: -x objective-c -fobjc-arc
-#cgo LDFLAGS: -framework Cocoa -framework Carbon -framework ServiceManagement -framework ImageIO
+#cgo LDFLAGS: -framework Cocoa -framework Carbon -framework ServiceManagement -framework ImageIO -framework QuickLookThumbnailing
 #include <stdlib.h>
 #include "bridge_darwin.h"
 */
@@ -26,6 +26,9 @@ type Handlers struct {
 	OpenSettings func()
 	// GridVisibility reports native show/hide of the grid window.
 	GridVisibility func(visible bool)
+	// GridBeak reports the status icon's horizontal center relative to the
+	// window's left edge, so the UI can point the popover beak at it.
+	GridBeak func(x float64)
 }
 
 var (
@@ -78,6 +81,20 @@ func FileIconPNGBase64(path string, size int) (string, error) {
 	res := C.dz_file_icon_png_base64(cp, C.int(size))
 	if res == nil {
 		return "", fmt.Errorf("no icon for %s", path)
+	}
+	defer C.free(unsafe.Pointer(res))
+	return C.GoString(res), nil
+}
+
+// FileThumbnailPNGBase64 returns a QuickLook content preview of the file
+// (images, PDFs, videos, …) as base64 PNG data, or an error when the file
+// has no preview; callers fall back to FileIconPNGBase64.
+func FileThumbnailPNGBase64(path string, size int) (string, error) {
+	cp := C.CString(path)
+	defer C.free(unsafe.Pointer(cp))
+	res := C.dz_file_thumbnail_png_base64(cp, C.int(size))
+	if res == nil {
+		return "", fmt.Errorf("no thumbnail for %s", path)
 	}
 	defer C.free(unsafe.Pointer(res))
 	return C.GoString(res), nil
@@ -172,5 +189,15 @@ func goGridVisibility(visible C.bool) {
 	handlersMu.RUnlock()
 	if fn != nil {
 		go fn(bool(visible))
+	}
+}
+
+//export goGridBeak
+func goGridBeak(x C.double) {
+	handlersMu.RLock()
+	fn := handlers.GridBeak
+	handlersMu.RUnlock()
+	if fn != nil {
+		go fn(float64(x))
 	}
 }

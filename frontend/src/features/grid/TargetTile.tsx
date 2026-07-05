@@ -1,7 +1,7 @@
 import { useState } from "react"
 import type { ActionSpec, Target } from "@/lib/backend"
 import { useFileIcon } from "@/hooks/useFileIcon"
-import { ActionIcon } from "@/components/ActionIcon"
+import { ActionTileIcon } from "@/components/ActionIcon"
 import { DROPBAR_MIME, TARGET_MIME, payloadFromDataTransfer } from "@/lib/dnd"
 import { cn } from "@/lib/utils"
 import {
@@ -78,23 +78,23 @@ export function TargetTile({
         >
           <div
             className={cn(
-              "flex size-14 items-center justify-center rounded-full",
-              "border border-white/10 bg-white/[0.07] shadow-sm",
-              "transition-colors group-hover:bg-white/[0.14]",
-              hover && "ring-2 ring-sky-400 bg-white/[0.18]"
+              "flex size-[52px] items-center justify-center rounded-xl",
+              "transition-all duration-100",
+              hover && "scale-110 rounded-xl bg-white/10 ring-2 ring-sky-400/80"
             )}
           >
             {nativeIcon ? (
               <img
                 src={`data:image/png;base64,${nativeIcon}`}
                 alt=""
-                className="size-9"
+                className="size-[52px]"
                 draggable={false}
               />
             ) : (
-              <ActionIcon
+              <ActionTileIcon
+                actionId={target.actionId}
                 icon={spec?.icon}
-                className={spec?.icon.startsWith("data:") ? "size-9" : "size-6"}
+                className="size-[46px]"
               />
             )}
           </div>

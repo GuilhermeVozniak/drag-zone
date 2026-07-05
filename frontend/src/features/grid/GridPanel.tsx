@@ -9,8 +9,25 @@ import {
 } from "@/hooks/useBackend"
 import { useNativeFileDrop } from "@/hooks/useNativeFileDrop"
 import { useTargetShortcuts } from "@/hooks/useTargetShortcuts"
-import { PanelTopOpen, Plus, Settings as SettingsIcon } from "lucide-react"
+import {
+  ChevronsUp,
+  Copy,
+  FolderCog,
+  Plus,
+  Power,
+  Settings as SettingsIcon,
+  Wrench,
+} from "lucide-react"
+import { ActionTileIcon } from "@/components/ActionIcon"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { DropBar } from "@/features/dropbar/DropBar"
+import { EmptyTopTiles } from "@/features/dropbar/EmptyTopTiles"
 import { TaskList } from "@/features/tasks/TaskList"
 import { AddTargetDialog } from "./AddTargetDialog"
 import { TargetTile } from "./TargetTile"
@@ -26,6 +43,21 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
 
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<Target | null>(null)
+  const [addingSpecId, setAddingSpecId] = useState<string | null>(null)
+
+  // "+" menu selection: actions without options are added straight to the
+  // grid (Dropzone's SkipConfig behavior); the rest open the config dialog.
+  const chooseSpec = (specId: string) => {
+    const spec = specs.find((s) => s.id === specId)
+    if (!spec) return
+    if (!spec.options || spec.options.length === 0) {
+      backend.grid.add(spec.id, spec.name, {})
+      return
+    }
+    setEditing(null)
+    setAddingSpecId(specId)
+    setAddOpen(true)
+  }
 
   useNativeFileDrop()
   useTargetShortcuts(targets)
@@ -74,81 +106,150 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
   )
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/95 shadow-2xl">
+    <div className="flex h-full flex-col overflow-hidden">
       <header
-        className="flex items-center justify-between px-4 py-2.5"
+        className="flex items-center justify-between px-3 py-2"
         style={{ "--wails-draggable": "drag" } as React.CSSProperties}
       >
-        <button
-          onClick={() => {
-            setEditing(null)
-            setAddOpen(true)
-          }}
-          className="flex size-6 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
-          title="Add to Grid"
-        >
-          <Plus className="size-3.5 text-white" />
-        </button>
-        <span className="text-xs font-semibold tracking-wide text-neutral-400">
-          DragZone
-        </span>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => backend.dropBar.setPopOut(true)}
-            className="flex size-6 items-center justify-center rounded-full hover:bg-white/10"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex size-7 items-center justify-center rounded-md hover:bg-white/10"
+                title="Add to Grid"
+              >
+                <Plus className="size-4 text-neutral-200" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="dark max-h-[380px] overflow-y-auto">
+              {specs.map((s) => (
+                <DropdownMenuItem key={s.id} onClick={() => chooseSpec(s.id)}>
+                  <ActionTileIcon actionId={s.id} icon={s.icon} className="size-5" />
+                  {s.name}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onOpenSettings}>
+                <Wrench className="size-3.5" /> Develop Action…
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <HeaderButton title="Hide grid" onClick={() => backend.window.hide()}>
+            <ChevronsUp className="size-4 text-neutral-200" />
+          </HeaderButton>
+        </div>
+        <div className="flex items-center">
+          <HeaderButton
             title="Pop out Drop Bar"
+            onClick={() => backend.dropBar.setPopOut(true)}
           >
-            <PanelTopOpen className="size-3.5 text-neutral-400" />
-          </button>
-          <button
-            onClick={onOpenSettings}
-            className="flex size-6 items-center justify-center rounded-full hover:bg-white/10"
-            title="Settings"
-          >
-            <SettingsIcon className="size-3.5 text-neutral-400" />
-          </button>
+            <Copy className="size-4 text-neutral-200" />
+          </HeaderButton>
+          <div className="mx-1.5 h-4 w-px bg-white/15" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex size-7 items-center justify-center rounded-md hover:bg-white/10"
+                title="Settings"
+              >
+                <SettingsIcon className="size-4 text-neutral-200" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="dark">
+              <DropdownMenuItem onClick={onOpenSettings}>
+                <SettingsIcon className="size-3.5" /> Settings…
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => backend.actions.openFolder()}>
+                <FolderCog className="size-3.5" /> Open Add-on Actions Folder
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => backend.window.quit()}
+              >
+                <Power className="size-3.5" /> Quit DragZone
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
-      <DropBar
-        items={dropBarItems}
-        onRemove={(id) => backend.dropBar.remove(id)}
-        onClear={() => backend.dropBar.clear()}
-      />
+      {dropBarItems.length === 0 ? (
+        <EmptyTopTiles
+          onAddClick={() => {
+            setEditing(null)
+            setAddingSpecId(null)
+            setAddOpen(true)
+          }}
+        />
+      ) : (
+        <DropBar
+          items={dropBarItems}
+          onRemove={(id) => backend.dropBar.remove(id)}
+          onClear={() => backend.dropBar.clear()}
+        />
+      )}
 
-      <div className="mt-2 flex-1 overflow-y-auto pb-2">
+      <div className="flex-1 overflow-y-auto pb-2">
         {folderApps.length > 0 && (
-          <>
-            <SectionLabel>Folders & Apps</SectionLabel>
-            {renderTiles(folderApps)}
-          </>
+          <Section label="FOLDERS / APPS">{renderTiles(folderApps)}</Section>
         )}
         {actionTargets.length > 0 && (
-          <>
-            <SectionLabel>Actions</SectionLabel>
-            {renderTiles(actionTargets)}
-          </>
+          <Section label="ACTIONS">{renderTiles(actionTargets)}</Section>
         )}
       </div>
 
-      <div className="pb-3">
+      <div className="pb-2">
         <TaskList tasks={tasks} />
       </div>
 
       <AddTargetDialog
         open={addOpen}
-        onOpenChange={setAddOpen}
+        onOpenChange={(open) => {
+          setAddOpen(open)
+          if (!open) setAddingSpecId(null)
+        }}
         specs={specs}
         editing={editing}
+        initialSpecId={addingSpecId}
       />
     </div>
   )
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function HeaderButton({
+  title,
+  onClick,
+  children,
+}: {
+  title: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
   return (
-    <p className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-500">
+    <button
+      onClick={onClick}
+      className="flex size-7 items-center justify-center rounded-md hover:bg-white/10"
+      title={title}
+    >
       {children}
-    </p>
+    </button>
+  )
+}
+
+function Section({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="border-t border-white/10">
+      <p className="px-4 pb-1.5 pt-2 text-[10px] font-semibold tracking-wider text-neutral-500">
+        {label}
+      </p>
+      {children}
+    </div>
   )
 }

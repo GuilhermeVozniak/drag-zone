@@ -36,6 +36,7 @@ const (
 	EventSpecsChanged     = "specs:changed"
 	EventDropBarPopOut    = "dropbar:popout"
 	EventInputRequest     = "input:request"
+	EventWindowBeak       = "window:beak"
 )
 
 // App wires the subsystems together and is the bindings facade exposed to the
@@ -132,6 +133,9 @@ func (a *App) startup(ctx context.Context) {
 		},
 		GridVisibility: func(visible bool) {
 			a.emit(EventWindowVisibility, visible)
+		},
+		GridBeak: func(x float64) {
+			a.emit(EventWindowBeak, x)
 		},
 	})
 	platform.InitNative("DragZone")

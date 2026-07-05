@@ -32,6 +32,7 @@ export const backend = {
   grid: {
     list: App.Targets,
     add: App.AddTarget,
+    addFromPaths: App.AddTargetsFromPaths,
     update: (t: Target) => App.UpdateTarget(t),
     remove: App.RemoveTarget,
     move: App.MoveTarget,
@@ -82,4 +83,5 @@ export const events = {
   ) => EventsOn("input:request", fn),
   onWindowVisibility: (fn: (visible: boolean) => void) =>
     EventsOn("window:visibility", fn),
+  onWindowBeak: (fn: (x: number) => void) => EventsOn("window:beak", fn),
 }

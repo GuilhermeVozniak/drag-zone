@@ -1,6 +1,10 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
+
 	"dragzone/internal/model"
 	"dragzone/internal/platform"
 )
@@ -48,6 +52,32 @@ func (a *App) MoveTarget(id string, position int) error {
 		return err
 	}
 	a.emit(EventGridChanged, a.grid.List())
+	return nil
+}
+
+// AddTargetsFromPaths adds grid targets inferred from paths dropped on the
+// "Add to Grid" area: .dzbundle installs as an action, .app becomes an Open
+// Application target, plain directories become Folder targets.
+func (a *App) AddTargetsFromPaths(paths []string) error {
+	for _, p := range paths {
+		switch {
+		case strings.HasSuffix(p, ".dzbundle"):
+			if err := a.InstallBundle(p); err != nil {
+				return err
+			}
+		case strings.HasSuffix(p, ".app"):
+			name := strings.TrimSuffix(filepath.Base(p), ".app")
+			if _, err := a.AddTarget("open-app", name, map[string]string{"app": p}); err != nil {
+				return err
+			}
+		default:
+			if info, err := os.Stat(p); err == nil && info.IsDir() {
+				if _, err := a.AddTarget("folder", filepath.Base(p), map[string]string{"path": p, "mode": "copy"}); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 

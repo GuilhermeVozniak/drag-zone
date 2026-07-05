@@ -14,6 +14,8 @@ export function useNativeFileDrop() {
         if (!dropId || paths.length === 0) return
         if (dropId === "dropbar") {
           backend.dropBar.add({ kind: "files", paths })
+        } else if (dropId === "add-to-grid") {
+          backend.grid.addFromPaths(paths)
         } else {
           backend.drop(dropId, { kind: "files", paths })
         }

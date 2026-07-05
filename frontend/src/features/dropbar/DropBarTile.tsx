@@ -68,7 +68,7 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
               <img
                 src={`data:image/png;base64,${nativeIcon}`}
                 alt=""
-                className="size-8"
+                className="max-h-8 max-w-8 rounded-[3px] object-contain"
                 draggable={false}
               />
             ) : (

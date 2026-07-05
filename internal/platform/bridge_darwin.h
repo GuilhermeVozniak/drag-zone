@@ -25,6 +25,11 @@ int dz_airdrop(const char *pathsJSON);
 // points, or NULL. Caller frees.
 char *dz_file_icon_png_base64(const char *path, int size);
 
+// Returns a malloc'd base64 PNG QuickLook thumbnail (content preview) of the
+// file at up to size*size points, or NULL when no preview is available
+// (caller should fall back to the icon). Caller frees.
+char *dz_file_thumbnail_png_base64(const char *path, int size);
+
 // Registers/unregisters the app as a login item. Returns 0 on success,
 // -1 when unsupported, -2 on failure.
 int dz_set_login_item(bool enabled);
