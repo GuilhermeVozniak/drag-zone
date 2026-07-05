@@ -54,11 +54,11 @@ func main() {
 		fmt.Fprintln(os.Stderr, "dz:", err)
 		os.Exit(1)
 	}
-	print_(cmd, data, flags["json"])
+	printResult(cmd, data, flags["json"])
 }
 
-func print_(cmd string, data json.RawMessage, asJSON bool) {
-	if asJSON || cmd == "list-items" && asJSON {
+func printResult(cmd string, data json.RawMessage, asJSON bool) {
+	if asJSON {
 		fmt.Println(string(data))
 		return
 	}

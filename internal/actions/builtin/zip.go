@@ -68,12 +68,17 @@ func (ZipFiles) Dropped(_ context.Context, inv actions.Invocation) (actions.Resu
 	return actions.Result{Message: "Created " + filepath.Base(dst)}, nil
 }
 
-func writeZip(dst string, paths []string, onBytes func(int64)) error {
+func writeZip(dst string, paths []string, onBytes func(int64)) (err error) {
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	// The close error matters: it is the final flush of the archive.
+	defer func() {
+		if cerr := out.Close(); err == nil {
+			err = cerr
+		}
+	}()
 	zw := zip.NewWriter(out)
 
 	for _, root := range paths {

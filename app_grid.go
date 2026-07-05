@@ -1,0 +1,87 @@
+package main
+
+import (
+	"dragzone/internal/model"
+	"dragzone/internal/platform"
+)
+
+// Grid targets, drops/clicks, and task bindings.
+
+func (a *App) ActionSpecs() []model.ActionSpec {
+	return a.registry.Specs()
+}
+
+func (a *App) Targets() []model.Target {
+	return a.grid.List()
+}
+
+func (a *App) AddTarget(actionID, label string, options map[string]string) (model.Target, error) {
+	if _, err := a.registry.Get(actionID); err != nil {
+		return model.Target{}, err
+	}
+	t, err := a.grid.Add(actionID, label, options)
+	if err != nil {
+		return model.Target{}, err
+	}
+	a.emit(EventGridChanged, a.grid.List())
+	return t, nil
+}
+
+func (a *App) UpdateTarget(t model.Target) error {
+	if err := a.grid.Update(t); err != nil {
+		return err
+	}
+	a.emit(EventGridChanged, a.grid.List())
+	return nil
+}
+
+func (a *App) RemoveTarget(id string) error {
+	if err := a.grid.Remove(id); err != nil {
+		return err
+	}
+	a.emit(EventGridChanged, a.grid.List())
+	return nil
+}
+
+func (a *App) MoveTarget(id string, position int) error {
+	if err := a.grid.Move(id, position); err != nil {
+		return err
+	}
+	a.emit(EventGridChanged, a.grid.List())
+	return nil
+}
+
+// DropOnTarget runs a target's dragged event with the given payload. Holding
+// Option is recorded as a payload modifier (folders invert copy/move, scripts
+// see KEY_MODIFIERS).
+func (a *App) DropOnTarget(targetID string, payload model.Payload) (string, error) {
+	if platform.OptionKeyDown() {
+		payload.Modifiers = append(payload.Modifiers, "Option")
+	}
+	return a.trigger(targetID, payload, model.EventDragged)
+}
+
+// ClickTarget runs a target's clicked event.
+func (a *App) ClickTarget(targetID string) (string, error) {
+	return a.trigger(targetID, model.Payload{}, model.EventClicked)
+}
+
+func (a *App) trigger(targetID string, payload model.Payload, event string) (string, error) {
+	target, err := a.grid.Get(targetID)
+	if err != nil {
+		return "", err
+	}
+	act, err := a.registry.Get(target.ActionID)
+	if err != nil {
+		return "", err
+	}
+	return a.runner.Run(a.ctx, act, target, payload, event)
+}
+
+func (a *App) Tasks() []model.TaskState {
+	return a.runner.List()
+}
+
+func (a *App) DismissTask(id string) {
+	a.runner.Dismiss(id)
+}

@@ -36,14 +36,6 @@ const (
 	driveHTTPTimeout = 60 * time.Second
 )
 
-// SaveTargetOption, when set by the application wiring, persists a single
-// option value on the target with the given ID. GoogleDriveUpload calls it
-// with key "refresh_token" to store the OAuth refresh token obtained on the
-// first drop (and with an empty value to clear a token that stopped working).
-// When nil, tokens are simply not persisted and the user re-authorizes on the
-// next drop.
-var SaveTargetOption func(targetID, key, value string)
-
 // GoogleDriveUpload uploads dropped files and folders to Google Drive and
 // copies the web link of the first uploaded file to the clipboard.
 //
@@ -52,7 +44,9 @@ var SaveTargetOption func(targetID, key, value string)
 // app" (APIs & Services > Credentials) with the Google Drive API enabled, and
 // paste the resulting client ID and client secret into the target's options.
 // On the first drop a browser window asks for consent; the granted refresh
-// token is persisted via SaveTargetOption so later drops upload silently.
+// token is persisted via Invocation.SaveOption so later drops upload
+// silently (or not at all when the host provides no persistence, in which
+// case every drop re-authorizes).
 type GoogleDriveUpload struct{}
 
 func (GoogleDriveUpload) Spec() model.ActionSpec {
@@ -107,7 +101,7 @@ func (GoogleDriveUpload) Dropped(ctx context.Context, inv actions.Invocation) (a
 		id, err := driveUploadOne(ctx, client, e, folderID, total, &done, inv.Progress)
 		if err != nil {
 			if isDriveAuthError(err) {
-				saveDriveRefreshToken(inv.Target.ID, "")
+				saveDriveRefreshToken(inv, "")
 				return actions.Result{}, fmt.Errorf("uploading %s: Google Drive rejected the authorization; stored token cleared, drop again to re-authorize: %w", e.rel, err)
 			}
 			return actions.Result{}, fmt.Errorf("uploading %s: %w", e.rel, err)
@@ -146,17 +140,17 @@ func driveClient(ctx context.Context, cfg *oauth2.Config, inv actions.Invocation
 			return nil, fmt.Errorf("authorizing with Google Drive: %w", err)
 		}
 		tok = t
-		saveDriveRefreshToken(inv.Target.ID, tok.RefreshToken)
+		saveDriveRefreshToken(inv, tok.RefreshToken)
 	}
 
 	src := cfg.TokenSource(octx, tok)
 	fresh, err := src.Token()
 	if err != nil {
-		saveDriveRefreshToken(inv.Target.ID, "")
+		saveDriveRefreshToken(inv, "")
 		return nil, fmt.Errorf("refreshing Google Drive access token (stored authorization cleared, drop again to re-authorize): %w", err)
 	}
 	if fresh.RefreshToken != "" && fresh.RefreshToken != tok.RefreshToken {
-		saveDriveRefreshToken(inv.Target.ID, fresh.RefreshToken)
+		saveDriveRefreshToken(inv, fresh.RefreshToken)
 	}
 
 	// Uploads of large files legitimately run longer than 60s, so the API
@@ -397,10 +391,10 @@ func driveCheckResponse(resp *http.Response) error {
 }
 
 // saveDriveRefreshToken persists (or clears, for value "") the refresh token
-// on the target via the SaveTargetOption hook, when the app wired one up.
-func saveDriveRefreshToken(targetID, value string) {
-	if SaveTargetOption != nil {
-		SaveTargetOption(targetID, "refresh_token", value)
+// on the target, when the host provides option persistence.
+func saveDriveRefreshToken(inv actions.Invocation, value string) {
+	if inv.SaveOption != nil {
+		inv.SaveOption("refresh_token", value)
 	}
 }
 

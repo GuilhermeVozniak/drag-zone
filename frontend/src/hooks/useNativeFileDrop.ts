@@ -1,0 +1,23 @@
+import { useEffect } from "react"
+import { backend } from "@/lib/backend"
+import { initNativeFileDrop } from "@/lib/dnd"
+
+/**
+ * Routes native (Wails) file drops to whatever is under the cursor: the
+ * Drop Bar stashes the files, a target tile runs its action. Register once
+ * per window.
+ */
+export function useNativeFileDrop() {
+  useEffect(() => {
+    initNativeFileDrop({
+      onFiles(dropId, paths) {
+        if (!dropId || paths.length === 0) return
+        if (dropId === "dropbar") {
+          backend.dropBar.add({ kind: "files", paths })
+        } else {
+          backend.drop(dropId, { kind: "files", paths })
+        }
+      },
+    })
+  }, [])
+}

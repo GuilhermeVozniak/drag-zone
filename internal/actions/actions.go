@@ -34,6 +34,11 @@ type Invocation struct {
 	Payload  model.Payload
 	Progress Progress
 	Services Services
+	// SaveOption persists one option value on the invoked target (an empty
+	// value deletes the key). Actions use it to store rotated credentials,
+	// e.g. OAuth refresh tokens. May be nil when the host provides no
+	// persistence.
+	SaveOption func(key, value string)
 }
 
 // Result is what an action produced, used for grid status and notifications.

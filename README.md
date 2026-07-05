@@ -39,16 +39,25 @@ Requirements: macOS 13+, Go 1.23+, Node 20+, the Wails v2 CLI
 (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`).
 
 ```sh
-wails build            # produces build/bin/dragzone.app
-wails dev              # live-reload development
-go test ./internal/... # backend tests
+wails build                        # produces build/bin/dragzone.app
+wails dev                          # live-reload development
+go build -o build/bin/dz ./cmd/dz  # the dz command line tool
+go test ./internal/...             # backend tests
 ```
+
+## Documentation
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — module map, data flows, protocols
+- [`docs/ACTIONS.md`](docs/ACTIONS.md) — writing `.dzbundle` actions and the `dz` CLI
+- [`docs/DROPZONE4-PARITY.md`](docs/DROPZONE4-PARITY.md) — the Dropzone 4 feature spec this clone tracks
+- [`CLAUDE.md`](CLAUDE.md) — contributor guide (commands, conventions, gotchas)
 
 ## Architecture
 
 ```
 main.go                     wails bootstrap, window options
-app.go                      bindings facade wiring subsystems
+app*.go                     bindings facade, split by domain (grid, dropbar,
+                            bundles, ipc, settings)
 internal/
   model/      shared domain types (Payload, Target, ActionSpec, TaskState)
   actions/    action engine: interfaces, registry, host services

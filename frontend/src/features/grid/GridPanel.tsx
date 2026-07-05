@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { backend, type Target } from "@/lib/backend"
-import { initNativeFileDrop } from "@/lib/dnd"
 import {
   useActionSpecs,
   useDropBar,
@@ -8,6 +7,8 @@ import {
   useTargets,
   useTasks,
 } from "@/hooks/useBackend"
+import { useNativeFileDrop } from "@/hooks/useNativeFileDrop"
+import { useTargetShortcuts } from "@/hooks/useTargetShortcuts"
 import { PanelTopOpen, Plus, Settings as SettingsIcon } from "lucide-react"
 import { DropBar } from "@/features/dropbar/DropBar"
 import { TaskList } from "@/features/tasks/TaskList"
@@ -26,37 +27,8 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<Target | null>(null)
 
-  // Native file drops: route to the tile / drop bar under the cursor.
-  useEffect(() => {
-    initNativeFileDrop({
-      onFiles(dropId, paths) {
-        if (!dropId || paths.length === 0) return
-        if (dropId === "dropbar") {
-          backend.dropBar.add({ kind: "files", paths })
-        } else {
-          backend.drop(dropId, { kind: "files", paths })
-        }
-      },
-    })
-  }, [])
-
-  // Single-key shortcuts launch targets while the grid is open.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      const el = e.target as HTMLElement
-      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable) return
-      const key = e.key.length === 1 ? e.key.toUpperCase() : ""
-      if (!key) return
-      const match = targets.find((t) => t.shortcut?.toUpperCase() === key)
-      if (match) {
-        e.preventDefault()
-        backend.click(match.id)
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [targets])
+  useNativeFileDrop()
+  useTargetShortcuts(targets)
 
   const specFor = (t: Target) => specs.find((s) => s.id === t.actionId)
   const folderApps = targets.filter((t) => FOLDER_APP_ACTIONS.has(t.actionId))

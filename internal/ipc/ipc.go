@@ -59,6 +59,12 @@ func Serve(handler Handler) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listening on control socket: %w", err)
 	}
+	// The socket accepts commands that act on the user's files; keep it
+	// owner-only.
+	if err := os.Chmod(path, 0o600); err != nil {
+		ln.Close()
+		return nil, fmt.Errorf("securing control socket: %w", err)
+	}
 	s := &Server{ln: ln}
 	go s.accept(handler)
 	return s, nil

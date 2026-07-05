@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -248,7 +249,9 @@ func LoadDir(dir string, host Host) ([]*ScriptAction, error) {
 		}
 		action, err := LoadBundle(filepath.Join(dir, e.Name()), host)
 		if err != nil {
-			continue // a broken bundle must not break startup
+			// A broken bundle must not break startup, but say why it was skipped.
+			log.Printf("bundles: skipping %s: %v", e.Name(), err)
+			continue
 		}
 		out = append(out, action)
 	}

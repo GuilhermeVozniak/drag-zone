@@ -13,13 +13,20 @@ import (
 
 const appDirName = "DragZone"
 
+// EnvDataDir overrides the data directory when set; used by tests to keep
+// store operations off the real user data.
+const EnvDataDir = "DRAGZONE_DATA_DIR"
+
 // Dir returns the application data directory, creating it if needed.
 func Dir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("resolving home directory: %w", err)
+	dir := os.Getenv(EnvDataDir)
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("resolving home directory: %w", err)
+		}
+		dir = filepath.Join(home, "Library", "Application Support", appDirName)
 	}
-	dir := filepath.Join(home, "Library", "Application Support", appDirName)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("creating data directory: %w", err)
 	}

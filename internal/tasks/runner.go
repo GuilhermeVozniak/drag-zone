@@ -20,24 +20,36 @@ const EventTasksChanged = "tasks:changed"
 // Emitter publishes an event to the frontend.
 type Emitter func(event string, data ...any)
 
-// Runner executes actions and tracks their task states.
-type Runner struct {
-	mu       sync.Mutex
-	tasks    map[string]*model.TaskState
-	order    []string
-	emit     Emitter
-	services actions.Services
-	notify   func() bool // whether completion notifications are enabled
+// Config carries the Runner's collaborators.
+type Config struct {
+	// Emit publishes task-state events to the frontend.
+	Emit Emitter
+	// Services are the host capabilities handed to running actions.
+	Services actions.Services
+	// NotifyEnabled is consulted at completion time so settings changes
+	// apply to in-flight tasks.
+	NotifyEnabled func() bool
+	// SaveTargetOption persists one option value on a grid target; it backs
+	// Invocation.SaveOption for actions that store credentials. Optional.
+	SaveTargetOption func(targetID, key, value string)
 }
 
-// NewRunner creates a Runner. notifyEnabled is consulted at completion time so
-// settings changes apply to in-flight tasks.
-func NewRunner(emit Emitter, services actions.Services, notifyEnabled func() bool) *Runner {
+// Runner executes actions and tracks their task states.
+type Runner struct {
+	mu    sync.Mutex
+	tasks map[string]*model.TaskState
+	order []string
+	cfg   Config
+}
+
+// NewRunner creates a Runner from its configuration.
+func NewRunner(cfg Config) *Runner {
+	if cfg.NotifyEnabled == nil {
+		cfg.NotifyEnabled = func() bool { return true }
+	}
 	return &Runner{
-		tasks:    map[string]*model.TaskState{},
-		emit:     emit,
-		services: services,
-		notify:   notifyEnabled,
+		tasks: map[string]*model.TaskState{},
+		cfg:   cfg,
 	}
 }
 
@@ -76,12 +88,16 @@ func (r *Runner) Run(ctx context.Context, act actions.Action, target model.Targe
 	r.mu.Unlock()
 	r.publish()
 
-	go r.execute(ctx, exec, actions.Invocation{
+	inv := actions.Invocation{
 		Target:   target,
 		Payload:  payload,
 		Progress: &reporter{runner: r, id: id},
-		Services: r.services,
-	}, id)
+		Services: r.cfg.Services,
+	}
+	if save := r.cfg.SaveTargetOption; save != nil {
+		inv.SaveOption = func(key, value string) { save(target.ID, key, value) }
+	}
+	go r.execute(ctx, exec, inv, id)
 	return id, nil
 }
 
@@ -107,9 +123,9 @@ func (r *Runner) execute(ctx context.Context, exec func(context.Context, actions
 	r.publish()
 
 	if err != nil {
-		r.services.Notify(title+" failed", err.Error())
-	} else if res.Message != "" && r.notify() {
-		r.services.Notify(title, res.Message)
+		r.cfg.Services.Notify(title+" failed", err.Error())
+	} else if res.Message != "" && r.cfg.NotifyEnabled() {
+		r.cfg.Services.Notify(title, res.Message)
 	}
 }
 
@@ -141,7 +157,7 @@ func (r *Runner) Dismiss(id string) {
 }
 
 func (r *Runner) publish() {
-	r.emit(EventTasksChanged, r.List())
+	r.cfg.Emit(EventTasksChanged, r.List())
 }
 
 // reporter adapts progress calls onto a task state.
