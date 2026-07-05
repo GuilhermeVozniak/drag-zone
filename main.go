@@ -1,0 +1,58 @@
+package main
+
+import (
+	"embed"
+	"log"
+
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+
+	"dragzone/internal/platform"
+)
+
+//go:embed all:frontend/dist
+var assets embed.FS
+
+const (
+	windowWidth  = 420
+	windowHeight = 560
+)
+
+func main() {
+	app, err := NewApp(platform.Services{})
+	if err != nil {
+		log.Fatalf("initializing app: %v", err)
+	}
+
+	err = wails.Run(&options.App{
+		Title:             "DragZone",
+		Width:             windowWidth,
+		Height:            windowHeight,
+		Frameless:         true,
+		DisableResize:     true,
+		AlwaysOnTop:       true,
+		HideWindowOnClose: true,
+		StartHidden:       true,
+		BackgroundColour:  &options.RGBA{R: 0, G: 0, B: 0, A: 0},
+		AssetServer: &assetserver.Options{
+			Assets: assets,
+		},
+		Mac: &mac.Options{
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
+		},
+		DragAndDrop: &options.DragAndDrop{
+			EnableFileDrop: true,
+		},
+		OnStartup:  app.startup,
+		OnShutdown: app.shutdown,
+		Bind: []interface{}{
+			app,
+		},
+	})
+	if err != nil {
+		log.Fatalf("running app: %v", err)
+	}
+}
