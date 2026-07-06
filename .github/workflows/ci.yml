@@ -35,21 +35,20 @@ jobs:
             echo "These files need gofmt:"; echo "$unformatted"; exit 1
           fi
 
-      - name: Go tests
-        run: go test ./...
-
-      - name: Install frontend deps
-        run: npm ci
-        working-directory: frontend
-
-      - name: Frontend tests
-        run: npm run test
-        working-directory: frontend
-
       - name: Install Wails
         run: |
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-      - name: Build app
+      # wails build regenerates frontend/wailsjs and frontend/dist (both
+      # gitignored). The package-main //go:embed of frontend/dist needs dist
+      # to exist before `go test`, so the build has to run first.
+      - name: Build app (generates bindings + dist)
         run: wails build
+
+      - name: Go tests
+        run: go test ./...
+
+      - name: Frontend tests
+        run: npm run test
+        working-directory: frontend
