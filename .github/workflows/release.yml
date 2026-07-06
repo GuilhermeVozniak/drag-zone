@@ -84,9 +84,15 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
           security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
           rm "$RUNNER_TEMP/cert.p12"
-          # fail here, not at codesign, if the identity is missing or invalid.
+          # Fail here, not at codesign, if the p12 doesn't hold a VALID
+          # Developer ID identity. A common trap: exporting the look-alike
+          # "Apple Development" row from Keychain Access — it imports as "1
+          # valid identity" but cannot sign for distribution.
           security find-identity -v -p codesigning "$KEYCHAIN" | tail -1
-          security find-identity -v -p codesigning "$KEYCHAIN" | grep -q "1 valid identities found"
+          if ! security find-identity -v -p codesigning "$KEYCHAIN" | grep "Developer ID Application"; then
+            echo '::error::MACOS_CERT_P12 holds no valid "Developer ID Application" identity - re-export that exact row (not "Apple Development") from Keychain Access.'
+            exit 1
+          fi
 
       - name: Sign app
         if: env.HAS_MACOS_SIGNING == 'true'
