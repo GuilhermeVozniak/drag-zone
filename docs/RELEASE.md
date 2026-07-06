@@ -48,15 +48,21 @@ You need an **Apple Developer account** ($99/yr). Gather two things.
 
 Repo › Settings › Secrets and variables › Actions → add:
 
+The names are shared with the option-tab repo, so the same values can be set
+on both (secrets are write-only on GitHub — set them from the local sources,
+they cannot be copied between repos):
+
 | Secret | Value |
 | --- | --- |
-| `MACOS_CERT_P12_BASE64` | base64 of the Developer ID Application `.p12` |
+| `MACOS_CERT_P12` | base64 of the Developer ID Application `.p12` |
 | `MACOS_CERT_PASSWORD` | the `.p12` export password |
-| `MACOS_SIGN_IDENTITY` | e.g. `Developer ID Application: Name (TEAMID)` |
-| `KEYCHAIN_PASSWORD` | any random string (temporary CI keychain) |
-| `NOTARY_APPLE_ID` | your Apple ID email |
-| `NOTARY_PASSWORD` | the app-specific password (`xxxx-xxxx-xxxx-xxxx`) |
-| `NOTARY_TEAM_ID` | your 10-character Team ID |
+| `APPLE_ID` | your Apple ID email |
+| `APPLE_APP_PASSWORD` | the app-specific password (`xxxx-xxxx-xxxx-xxxx`) |
+| `APPLE_TEAM_ID` | your 10-character Team ID |
+
+The CI keychain password is generated per-run; no keychain secret is needed.
+Signing uses the generic `"Developer ID Application"` identity match, so no
+identity-name secret is needed either.
 
 ## Cutting a release
 

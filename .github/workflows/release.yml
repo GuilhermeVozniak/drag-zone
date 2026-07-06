@@ -1,8 +1,9 @@
 name: Release
 
 # Cut a release by pushing a version tag, e.g.:
-#   git tag v0.3.0 && git push origin v0.3.0
-# Requires the signing/notarization secrets documented in docs/RELEASE.md.
+#   git tag v0.3.2 && git push origin v0.3.2
+# Mirrors the proven option-tab release pipeline (same secret names and
+# signing/notarization sequence); see docs/RELEASE.md for the secrets.
 on:
   push:
     tags: ['v*']
@@ -14,6 +15,9 @@ jobs:
   release:
     name: Build, sign, notarize
     runs-on: macos-14
+    env:
+      # secrets are not readable in step-level `if:`; surface presence here.
+      HAS_MACOS_SIGNING: ${{ secrets.MACOS_CERT_P12 != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,30 +43,6 @@ jobs:
           go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-      - name: Import signing certificate
-        env:
-          CERT_B64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
-          CERT_PWD: ${{ secrets.MACOS_CERT_PASSWORD }}
-          KEYCHAIN_PWD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          CERT_PATH="$RUNNER_TEMP/cert.p12"
-          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
-          echo "$CERT_B64" | base64 --decode > "$CERT_PATH"
-          security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
-          # Keychain Access p12 exports hold only the leaf cert + key. Without
-          # Apple's "Developer ID Certification Authority G2" intermediate the
-          # chain can't be built and codesign reports "no identity found".
-          curl -sSLo "$RUNNER_TEMP/DeveloperIDG2CA.cer" https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
-          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN"
-          security import "$CERT_PATH" -P "$CERT_PWD" -A -t cert -f pkcs12 -k "$KEYCHAIN" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" "$KEYCHAIN" > /dev/null
-          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
-          # Sanity check: fail here (not at codesign) if the identity is unusable.
-          security find-identity -v -p codesigning "$KEYCHAIN" | tail -1
-          security find-identity -v -p codesigning "$KEYCHAIN" | grep -q "1 valid identities found"
-
       - name: Build app (universal)
         run: wails build -platform darwin/universal -ldflags "-X main.appVersion=${{ steps.version.outputs.version }}"
 
@@ -78,43 +58,57 @@ jobs:
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.version }}" "$PLIST"
 
-      - name: Code sign (hardened runtime)
+      # Signing/notarization steps are skipped when the signing secrets are
+      # absent (e.g. forks), so unsigned releases still build.
+      - name: Import signing certificate
+        if: env.HAS_MACOS_SIGNING == 'true'
         env:
-          IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
         run: |
-          APP=build/bin/dragzone.app
-          codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP/Contents/Resources/dz"
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain
+          rm "$RUNNER_TEMP/cert.p12"
+          # fail here, not at codesign, if the p12 lacks a Developer ID identity.
+          security find-identity -v -p codesigning "$KEYCHAIN" | grep "Developer ID Application"
+
+      - name: Sign app
+        if: env.HAS_MACOS_SIGNING == 'true'
+        run: |
+          # dz is a Mach-O in Resources; --deep does not descend there, and
+          # notarization rejects unsigned nested binaries, so sign it first.
           codesign --force --options runtime --timestamp \
-            --entitlements build/darwin/entitlements.plist --sign "$IDENTITY" "$APP"
-          codesign --verify --deep --strict --verbose=2 "$APP"
+            --sign "Developer ID Application" build/bin/dragzone.app/Contents/Resources/dz
+          codesign --force --deep --options runtime --timestamp \
+            --sign "Developer ID Application" build/bin/dragzone.app
+          codesign --verify --deep --strict --verbose=2 build/bin/dragzone.app
 
       - name: Create DMG
         run: |
-          brew install create-dmg
-          VERSION="${{ steps.version.outputs.version }}"
-          # create-dmg exits non-zero when it can't style the window on a
-          # headless runner; the DMG is still produced, so guard on the file.
-          create-dmg \
-            --volname "DragZone $VERSION" \
-            --window-size 540 380 \
-            --icon "dragzone.app" 150 190 \
-            --app-drop-link 390 190 \
-            "DragZone-$VERSION.dmg" "build/bin/dragzone.app" || true
-          test -f "DragZone-$VERSION.dmg"
+          npx --yes appdmg build/darwin/dmg/appdmg.json \
+            "DragZone-${{ steps.version.outputs.version }}.dmg"
 
-      - name: Notarize & staple
+      - name: Sign, notarize, and staple dmg
+        if: env.HAS_MACOS_SIGNING == 'true'
         env:
-          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
-          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
-          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          xcrun notarytool submit "DragZone-$VERSION.dmg" \
-            --apple-id "$NOTARY_APPLE_ID" \
-            --password "$NOTARY_PASSWORD" \
-            --team-id "$NOTARY_TEAM_ID" \
-            --wait
-          xcrun stapler staple "DragZone-$VERSION.dmg"
+          DMG="DragZone-${{ steps.version.outputs.version }}.dmg"
+          codesign --force --timestamp --sign "Developer ID Application" "$DMG"
+          xcrun notarytool submit "$DMG" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" --wait
+          # staple fails if notarization did not fully succeed, failing the job.
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
