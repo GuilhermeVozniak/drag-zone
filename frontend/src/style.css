@@ -82,3 +82,53 @@
     cursor: default;
   }
 }
+
+/* Panel surface color used by the popover chrome and its beak — matches
+   Dropzone 4's measured values: light #ECECEC, dark #303030. */
+:root {
+  --panel-bg: rgb(236 236 236);
+}
+:root.dark {
+  --panel-bg: rgb(48 48 48);
+}
+
+/* Light-mode overrides for the hand-built dark surfaces. The app was
+   designed dark-first (like Dropzone); these remap the hardcoded dark
+   utilities when "Always use dark mode" is off and the OS is light. */
+html:not(.dark) {
+  .bg-neutral-900 {
+    background-color: rgb(242 242 245);
+  }
+  .text-neutral-100,
+  .text-neutral-200,
+  .text-neutral-300 {
+    color: rgb(38 38 38);
+  }
+  .text-neutral-400,
+  .text-neutral-500 {
+    color: rgb(107 107 112);
+  }
+  .border-white\/10,
+  .border-white\/15 {
+    border-color: rgb(0 0 0 / 0.12);
+  }
+  .bg-white\/10,
+  .bg-white\/\[0\.07\],
+  .bg-white\/\[0\.08\] {
+    background-color: rgb(0 0 0 / 0.06);
+  }
+  .hover\:bg-white\/10:hover,
+  .hover\:bg-white\/20:hover,
+  .hover\:bg-white\/\[0\.08\]:hover {
+    background-color: rgb(0 0 0 / 0.08);
+  }
+  .border-neutral-500 {
+    border-color: rgb(0 0 0 / 0.35);
+  }
+  .bg-neutral-700 {
+    background-color: rgb(0 0 0 / 0.5);
+  }
+  .bg-white\/15 {
+    background-color: rgb(0 0 0 / 0.15);
+  }
+}

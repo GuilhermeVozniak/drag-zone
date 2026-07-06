@@ -80,7 +80,7 @@ export function AddTargetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[480px] overflow-y-auto dark border-white/10 bg-neutral-900 text-neutral-100 sm:max-w-[380px]">
+      <DialogContent className="max-h-[480px] overflow-y-auto border-white/10 bg-neutral-900 text-neutral-100 sm:max-w-[380px]">
         <DialogHeader>
           <DialogTitle className="text-sm">
             {editing ? "Edit " + editing.label : spec ? "Add " + spec.name : "Add to Grid"}

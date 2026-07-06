@@ -18,6 +18,9 @@ var assets embed.FS
 const (
 	windowWidth  = 420
 	windowHeight = 560
+
+	// appVersion is shown in the Updates tab.
+	appVersion = "0.2.0"
 )
 
 func main() {

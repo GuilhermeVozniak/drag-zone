@@ -1,9 +1,18 @@
 // Typed facade over the generated Wails bindings and runtime events.
 import * as App from "../../wailsjs/go/main/App"
 import { EventsOn } from "../../wailsjs/runtime/runtime"
-import type { config, dropbar, model } from "../../wailsjs/go/models"
+import type { config, dropbar, main, model } from "../../wailsjs/go/models"
+
+/** UI scale derived from the grid-size setting (mirrors config.Settings.Scale). */
+export function uiScale(s: Settings | null): number {
+  const pct = Math.min(100, Math.max(0, s?.gridSize ?? 33))
+  return 0.8 + (pct / 100) * 0.6
+}
 
 export type Settings = config.Settings
+export type AddonInfo = main.AddonInfo
+export type UpdateInfo = main.UpdateInfo
+export type Share = main.Share
 export type Target = model.Target
 export type ActionSpec = model.ActionSpec
 export type OptionField = model.OptionField
@@ -43,7 +52,14 @@ export const backend = {
   tasks: {
     list: App.Tasks,
     dismiss: App.DismissTask,
+    cancel: App.CancelTask,
   },
+  shares: {
+    list: App.RecentShares,
+    clear: App.ClearRecentShares,
+    open: App.OpenURL,
+  },
+  playDropSound: App.PlayDropSound,
   dropBar: {
     list: App.DropBarItems,
     add: (payload: Payload) => App.DropBarAdd(payload as model.Payload),
@@ -53,9 +69,26 @@ export const backend = {
     setLocked: App.DropBarSetLocked,
     rename: App.DropBarRename,
     setPopOut: App.SetDropBarPopOut,
+    separate: App.DropBarSeparate,
+    combineAll: App.DropBarCombineAll,
+    copyToClipboard: App.DropBarCopyToClipboard,
+    reveal: App.DropBarReveal,
+    paste: App.DropBarPaste,
   },
   quickLook: App.QuickLook,
   answerInput: App.AnswerInputRequest,
+  addons: {
+    list: App.ListAddons,
+    install: App.InstallAddon,
+  },
+  cli: {
+    installed: App.CLIInstalled,
+    install: App.InstallCLI,
+  },
+  updates: {
+    check: App.CheckForUpdates,
+    version: App.GetVersion,
+  },
   dialogs: {
     chooseFolder: App.ChooseFolder,
     chooseApplication: App.ChooseApplication,
@@ -84,4 +117,6 @@ export const events = {
   onWindowVisibility: (fn: (visible: boolean) => void) =>
     EventsOn("window:visibility", fn),
   onWindowBeak: (fn: (x: number) => void) => EventsOn("window:beak", fn),
+  onSharesChanged: (fn: (shares: Share[]) => void) =>
+    EventsOn("shares:changed", fn),
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"dragzone/internal/addons"
 	"dragzone/internal/bundles"
 	"dragzone/internal/fsutil"
 	"dragzone/internal/model"
@@ -129,6 +130,46 @@ func (a *App) DevelopAction(name, language string) error {
 	}
 	a.emit(EventSpecsChanged, a.registry.Specs())
 	return a.services.OpenPath(bundle)
+}
+
+// AddonInfo describes one entry of the official add-on catalogue.
+type AddonInfo struct {
+	Name      string `json:"name"`
+	Installed bool   `json:"installed"`
+}
+
+// ListAddons returns the add-on actions available from the official
+// aptonic/dropzone4-actions repository, marking already-installed ones.
+func (a *App) ListAddons() ([]AddonInfo, error) {
+	names, err := addons.List(a.ctx)
+	if err != nil {
+		return nil, err
+	}
+	dir, err := actionsDir()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]AddonInfo, 0, len(names))
+	for _, name := range names {
+		_, statErr := os.Stat(filepath.Join(dir, name+".dzbundle"))
+		out = append(out, AddonInfo{Name: name, Installed: statErr == nil})
+	}
+	return out, nil
+}
+
+// InstallAddon downloads an add-on from the official repository and installs
+// it into the grid's action library.
+func (a *App) InstallAddon(name string) error {
+	base, err := storage.Dir()
+	if err != nil {
+		return err
+	}
+	bundle, cleanup, err := addons.FetchBundle(a.ctx, base, name)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	return a.InstallBundle(bundle)
 }
 
 // OpenActionsFolder reveals the bundle installation directory in Finder.

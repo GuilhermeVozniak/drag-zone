@@ -31,6 +31,11 @@ func (Services) Notify(title, body string) {
 	exec.Command("osascript", "-e", script).Run()
 }
 
+// PlaySound plays a named system sound asynchronously.
+func (Services) PlaySound(name string) {
+	exec.Command("afplay", "/System/Library/Sounds/"+name+".aiff").Start()
+}
+
 // OpenURL opens a URL in the default browser.
 func (Services) OpenURL(url string) error {
 	return exec.Command("open", url).Run()

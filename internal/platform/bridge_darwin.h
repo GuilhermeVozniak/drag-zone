@@ -34,8 +34,20 @@ char *dz_file_thumbnail_png_base64(const char *path, int size);
 // -1 when unsupported, -2 on failure.
 int dz_set_login_item(bool enabled);
 
-// Registers a global hotkey on the given function key (1-12); 0 unregisters.
-void dz_set_hotkey_f(int fkey);
+// Registers a global hotkey on the given function key (1-12) in the given
+// slot (1 = toggle grid, 2 = pop out Drop Bar); fkey 0 unregisters the slot.
+void dz_set_hotkey_f(int fkey, int slot);
+
+// Enables/disables showing the grid when a file drag nears the menu bar.
+void dz_set_drag_overlay_enabled(bool enabled);
+
+// Status item states (Dropzone shows task feedback in the menu bar icon).
+// 0 normal (tray+arrow), 1 drag, 2 running, 3 success, 4 failure.
+void dz_set_status_state(int state);
+
+// Returns a malloc'd JSON array of file paths currently on the general
+// pasteboard, or NULL when it holds no file URLs. Caller frees.
+char *dz_clipboard_file_paths(void);
 
 // Reports whether the Option key is currently held.
 bool dz_option_key_down(void);

@@ -29,6 +29,8 @@ type Handlers struct {
 	// GridBeak reports the status icon's horizontal center relative to the
 	// window's left edge, so the UI can point the popover beak at it.
 	GridBeak func(x float64)
+	// PopOutHotkey fires when the pop-out-Drop-Bar global hotkey is pressed.
+	PopOutHotkey func()
 }
 
 var (
@@ -112,8 +114,45 @@ func SetLoginItem(enabled bool) error {
 	}
 }
 
-// SetHotkeyF binds the global toggle-grid hotkey to F<n> (1-12); 0 disables.
-func SetHotkeyF(n int) { C.dz_set_hotkey_f(C.int(n)) }
+// Hotkey slots for SetHotkeyF.
+const (
+	HotkeySlotGrid   = 1 // toggle the grid
+	HotkeySlotPopOut = 2 // pop out / dock the Drop Bar
+)
+
+// SetHotkeyF binds a global hotkey slot to F<n> (1-12); 0 disables the slot.
+func SetHotkeyF(n, slot int) { C.dz_set_hotkey_f(C.int(n), C.int(slot)) }
+
+// SetDragOverlayEnabled toggles showing the grid when a file drag nears the
+// menu bar.
+func SetDragOverlayEnabled(enabled bool) { C.dz_set_drag_overlay_enabled(C.bool(enabled)) }
+
+// StatusState values for SetStatusState, mirroring Dropzone's menu bar icon
+// feedback.
+const (
+	StatusNormal  = 0
+	StatusDrag    = 1
+	StatusRunning = 2
+	StatusSuccess = 3
+	StatusFailure = 4
+)
+
+// SetStatusState switches the menu bar icon between its feedback states.
+func SetStatusState(state int) { C.dz_set_status_state(C.int(state)) }
+
+// ClipboardFilePaths returns file paths currently on the pasteboard, if any.
+func ClipboardFilePaths() []string {
+	res := C.dz_clipboard_file_paths()
+	if res == nil {
+		return nil
+	}
+	defer C.free(unsafe.Pointer(res))
+	var paths []string
+	if err := json.Unmarshal([]byte(C.GoString(res)), &paths); err != nil {
+		return nil
+	}
+	return paths
+}
 
 // OptionKeyDown reports whether the Option key is currently held, used to
 // invert folder copy/move behavior and populate KEY_MODIFIERS for scripts.
@@ -199,5 +238,15 @@ func goGridBeak(x C.double) {
 	handlersMu.RUnlock()
 	if fn != nil {
 		go fn(float64(x))
+	}
+}
+
+//export goPopOutHotkey
+func goPopOutHotkey() {
+	handlersMu.RLock()
+	fn := handlers.PopOutHotkey
+	handlersMu.RUnlock()
+	if fn != nil {
+		go fn()
 	}
 }

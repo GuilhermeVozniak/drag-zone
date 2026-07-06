@@ -29,17 +29,25 @@ type Config struct {
 	// NotifyEnabled is consulted at completion time so settings changes
 	// apply to in-flight tasks.
 	NotifyEnabled func() bool
+	// SoundsEnabled gates completion/failure sounds the same way.
+	SoundsEnabled func() bool
 	// SaveTargetOption persists one option value on a grid target; it backs
 	// Invocation.SaveOption for actions that store credentials. Optional.
 	SaveTargetOption func(targetID, key, value string)
+	// OnTask is called when a task starts (TaskRunning) and when it finishes
+	// (TaskDone/TaskError); used for menu bar icon feedback. Optional.
+	OnTask func(status model.TaskStatus)
+	// OnResultURL is called when a task produces a shareable URL. Optional.
+	OnResultURL func(title, url string)
 }
 
 // Runner executes actions and tracks their task states.
 type Runner struct {
-	mu    sync.Mutex
-	tasks map[string]*model.TaskState
-	order []string
-	cfg   Config
+	mu      sync.Mutex
+	tasks   map[string]*model.TaskState
+	order   []string
+	cancels map[string]context.CancelFunc
+	cfg     Config
 }
 
 // NewRunner creates a Runner from its configuration.
@@ -48,8 +56,9 @@ func NewRunner(cfg Config) *Runner {
 		cfg.NotifyEnabled = func() bool { return true }
 	}
 	return &Runner{
-		tasks: map[string]*model.TaskState{},
-		cfg:   cfg,
+		tasks:   map[string]*model.TaskState{},
+		cancels: map[string]context.CancelFunc{},
+		cfg:     cfg,
 	}
 }
 
@@ -82,11 +91,16 @@ func (r *Runner) Run(ctx context.Context, act actions.Action, target model.Targe
 		Status:    model.TaskRunning,
 		StartedAt: time.Now(),
 	}
+	ctx, cancel := context.WithCancel(ctx)
 	r.mu.Lock()
 	r.tasks[id] = state
 	r.order = append(r.order, id)
+	r.cancels[id] = cancel
 	r.mu.Unlock()
 	r.publish()
+	if r.cfg.OnTask != nil {
+		r.cfg.OnTask(model.TaskRunning)
+	}
 
 	inv := actions.Invocation{
 		Target:   target,
@@ -103,6 +117,9 @@ func (r *Runner) Run(ctx context.Context, act actions.Action, target model.Targe
 
 func (r *Runner) execute(ctx context.Context, exec func(context.Context, actions.Invocation) (actions.Result, error), inv actions.Invocation, id string) {
 	res, err := exec(ctx, inv)
+	if ctx.Err() == context.Canceled {
+		err = fmt.Errorf("cancelled")
+	}
 
 	r.mu.Lock()
 	state := r.tasks[id]
@@ -119,13 +136,26 @@ func (r *Runner) execute(ctx context.Context, exec func(context.Context, actions
 		state.ResultURL = res.URL
 	}
 	title := state.Title
+	delete(r.cancels, id)
 	r.mu.Unlock()
 	r.publish()
+	if r.cfg.OnTask != nil {
+		r.cfg.OnTask(state.Status)
+	}
+	if err == nil && res.URL != "" && r.cfg.OnResultURL != nil {
+		r.cfg.OnResultURL(title, res.URL)
+	}
 
 	if err != nil {
 		r.cfg.Services.Notify(title+" failed", err.Error())
+		if r.cfg.SoundsEnabled == nil || r.cfg.SoundsEnabled() {
+			r.cfg.Services.PlaySound("Basso")
+		}
 	} else if res.Message != "" && r.cfg.NotifyEnabled() {
 		r.cfg.Services.Notify(title, res.Message)
+		if r.cfg.SoundsEnabled == nil || r.cfg.SoundsEnabled() {
+			r.cfg.Services.PlaySound("Glass")
+		}
 	}
 }
 
@@ -138,6 +168,16 @@ func (r *Runner) List() []model.TaskState {
 		out = append(out, *r.tasks[r.order[i]])
 	}
 	return out
+}
+
+// Cancel aborts a running task; its action sees a cancelled context.
+func (r *Runner) Cancel(id string) {
+	r.mu.Lock()
+	cancel := r.cancels[id]
+	r.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 }
 
 // Dismiss removes a finished task from the list.

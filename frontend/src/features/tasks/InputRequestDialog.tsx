@@ -40,7 +40,7 @@ export function InputRequestDialog() {
 
   return (
     <Dialog open={!!current} onOpenChange={(open) => !open && answer(false)}>
-      <DialogContent className="dark border-white/10 bg-neutral-900 text-neutral-100 sm:max-w-[340px]">
+      <DialogContent className="border-white/10 bg-neutral-900 text-neutral-100 sm:max-w-[340px]">
         <DialogHeader>
           <DialogTitle className="text-sm">{current?.title}</DialogTitle>
         </DialogHeader>

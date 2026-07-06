@@ -29,17 +29,32 @@ func TestAddLabelsAndStacks(t *testing.T) {
 	t.Setenv(storage.EnvDataDir, t.TempDir())
 	s := load(t)
 
+	url, _ := s.Add(model.Payload{Kind: model.ItemURL, Text: "https://example.com"})
+	if url.Label != "https://example.com" {
+		t.Errorf("url label = %q", url.Label)
+	}
 	one, _ := s.Add(model.Payload{Kind: model.ItemFiles, Paths: []string{"/tmp/report.pdf"}})
 	if one.Label != "report.pdf" {
 		t.Errorf("single file label = %q", one.Label)
 	}
 	stack, _ := s.Add(model.Payload{Kind: model.ItemFiles, Paths: []string{"/tmp/a.txt", "/tmp/b.txt", "/tmp/c.txt"}})
-	if stack.Label != "a.txt +2" {
+	if stack.Label != "3 Items" {
 		t.Errorf("stack label = %q", stack.Label)
 	}
-	url, _ := s.Add(model.Payload{Kind: model.ItemURL, Text: "https://example.com"})
-	if url.Label != "https://example.com" {
-		t.Errorf("url label = %q", url.Label)
+
+	// Separate splits the stack into singles; CombineAll re-merges them.
+	if err := s.Separate(stack.ID); err != nil {
+		t.Fatal(err)
+	}
+	if items := s.List(); len(items) != 5 { // url + single + three separated
+		t.Fatalf("after separate: %d items", len(items))
+	}
+	if err := s.CombineAll(); err != nil {
+		t.Fatal(err)
+	}
+	items := s.List()
+	if len(items) != 2 { // url item + one merged stack of 4 files
+		t.Fatalf("after combine: %+v", items)
 	}
 }
 

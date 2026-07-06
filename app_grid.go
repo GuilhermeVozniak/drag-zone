@@ -115,3 +115,15 @@ func (a *App) Tasks() []model.TaskState {
 func (a *App) DismissTask(id string) {
 	a.runner.Dismiss(id)
 }
+
+// CancelTask aborts a running task.
+func (a *App) CancelTask(id string) {
+	a.runner.Cancel(id)
+}
+
+// PlayDropSound gives audio feedback for a drop, honoring the sound setting.
+func (a *App) PlayDropSound() {
+	if a.settings.Get().PlaySounds {
+		a.services.PlaySound("Pop")
+	}
+}

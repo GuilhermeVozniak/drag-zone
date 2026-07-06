@@ -86,6 +86,60 @@ func (s *Store) Add(p model.Payload) (Item, error) {
 	return it, s.save()
 }
 
+// Separate splits a stack into one item per file, in place of the stack.
+func (s *Store) Separate(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, it := range s.items {
+		if it.ID != id || len(it.Paths) < 2 {
+			continue
+		}
+		singles := make([]Item, 0, len(it.Paths))
+		for _, p := range it.Paths {
+			payload := model.Payload{Kind: model.ItemFiles, Paths: []string{p}}
+			singles = append(singles, Item{
+				ID:      uuid.NewString(),
+				Kind:    model.ItemFiles,
+				Paths:   payload.Paths,
+				Label:   labelFor(payload),
+				Locked:  it.Locked,
+				AddedAt: it.AddedAt,
+			})
+		}
+		s.items = append(s.items[:i], append(singles, s.items[i+1:]...)...)
+		return s.save()
+	}
+	return nil
+}
+
+// CombineAll merges every file item into a single stack; text items stay.
+func (s *Store) CombineAll() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var paths []string
+	var rest []Item
+	for _, it := range s.items {
+		if it.Kind == model.ItemFiles {
+			paths = append(paths, it.Paths...)
+		} else {
+			rest = append(rest, it)
+		}
+	}
+	if len(paths) == 0 {
+		return nil
+	}
+	payload := model.Payload{Kind: model.ItemFiles, Paths: paths}
+	stack := Item{
+		ID:      uuid.NewString(),
+		Kind:    model.ItemFiles,
+		Paths:   paths,
+		Label:   labelFor(payload),
+		AddedAt: time.Now(),
+	}
+	s.items = append(rest, stack)
+	return s.save()
+}
+
 // Rename sets a custom label; an empty name resets to the derived label.
 func (s *Store) Rename(id, name string) error {
 	s.mu.Lock()
@@ -140,7 +194,8 @@ func labelFor(p model.Payload) string {
 	case len(p.Paths) == 1:
 		return filepath.Base(p.Paths[0])
 	case len(p.Paths) > 1:
-		return filepath.Base(p.Paths[0]) + " +" + strconv.Itoa(len(p.Paths)-1)
+		// Stacks are labeled like Dropzone: "3 Items".
+		return strconv.Itoa(len(p.Paths)) + " Items"
 	case p.Kind == model.ItemURL:
 		return p.Text
 	default:

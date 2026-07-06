@@ -10,6 +10,14 @@ import type { Payload } from "@/lib/backend"
 export const DROPBAR_MIME = "application/x-dragzone-dropbar-item"
 export const TARGET_MIME = "application/x-dragzone-target"
 
+// The whole UI is scaled with CSS zoom (grid size setting); native drop
+// coordinates arrive in window pixels and must be un-zoomed before hit
+// testing.
+let scale = 1
+export function setUIScale(s: number) {
+  scale = s
+}
+
 export interface DropHandler {
   /** Called with the drop-id of the element under the cursor (or null). */
   onFiles(dropId: string | null, paths: string[]): void
@@ -19,7 +27,7 @@ export interface DropHandler {
 export function initNativeFileDrop(handler: DropHandler) {
   OnFileDrop((x, y, paths) => {
     document.body.classList.remove("native-dragging")
-    const el = document.elementFromPoint(x, y)
+    const el = document.elementFromPoint(x / scale, y / scale)
     const dropEl = el?.closest<HTMLElement>("[data-drop-id]")
     handler.onFiles(dropEl?.dataset.dropId ?? null, paths)
   }, true)

@@ -15,6 +15,8 @@ type Services interface {
 	CopyToClipboard(text string) error
 	ReadClipboard() (string, error)
 	Notify(title, body string)
+	// PlaySound plays a named system sound (e.g. "Glass", "Basso").
+	PlaySound(name string)
 	OpenURL(url string) error
 	OpenPath(path string) error
 	Reveal(path string) error

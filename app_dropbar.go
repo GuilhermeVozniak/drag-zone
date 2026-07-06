@@ -2,6 +2,7 @@ package main
 
 import (
 	"os/exec"
+	"strings"
 
 	"dragzone/internal/dropbar"
 	"dragzone/internal/model"
@@ -70,6 +71,9 @@ func (a *App) DropBarRename(id, name string) error {
 // SetDropBarPopOut pops the Drop Bar out into a pinned always-visible panel
 // (or docks it back into the grid).
 func (a *App) SetDropBarPopOut(popped bool) error {
+	a.dragMu.Lock()
+	a.poppedOut = popped
+	a.dragMu.Unlock()
 	platform.SetPinned(popped)
 	if popped {
 		platform.ShowGrid(false)
@@ -89,6 +93,61 @@ func (a *App) StartDragOut(itemID string) error {
 	a.draggingItem = itemID
 	a.dragMu.Unlock()
 	return platform.StartDrag(item.Paths)
+}
+
+// DropBarSeparate splits a stack into individual items.
+func (a *App) DropBarSeparate(id string) error {
+	if err := a.dropBar.Separate(id); err != nil {
+		return err
+	}
+	a.emit(EventDropBarChanged, a.dropBar.List())
+	return nil
+}
+
+// DropBarCombineAll merges all file items into a single stack.
+func (a *App) DropBarCombineAll() error {
+	if err := a.dropBar.CombineAll(); err != nil {
+		return err
+	}
+	a.emit(EventDropBarChanged, a.dropBar.List())
+	return nil
+}
+
+// DropBarCopyToClipboard copies an item's paths (or text) to the clipboard.
+func (a *App) DropBarCopyToClipboard(id string) error {
+	item, ok := a.dropBar.Get(id)
+	if !ok {
+		return nil
+	}
+	text := item.Text
+	if item.Kind == model.ItemFiles {
+		text = strings.Join(item.Paths, "\n")
+	}
+	return a.services.CopyToClipboard(text)
+}
+
+// DropBarReveal shows an item's first file in Finder.
+func (a *App) DropBarReveal(id string) error {
+	item, ok := a.dropBar.Get(id)
+	if !ok || len(item.Paths) == 0 {
+		return nil
+	}
+	return a.services.Reveal(item.Paths[0])
+}
+
+// DropBarPaste stashes the clipboard contents (files or text), like Cmd-V in
+// Dropzone.
+func (a *App) DropBarPaste() error {
+	if paths := platform.ClipboardFilePaths(); len(paths) > 0 {
+		_, err := a.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: paths})
+		return err
+	}
+	text, err := a.services.ReadClipboard()
+	if err != nil || strings.TrimSpace(text) == "" {
+		return nil
+	}
+	_, err = a.DropBarAdd(model.Payload{Kind: model.ItemText, Text: text})
+	return err
 }
 
 // QuickLook previews files with the system Quick Look panel.

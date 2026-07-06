@@ -25,7 +25,7 @@ export function RenameItemDialog({ item, value, onValueChange }: RenameItemDialo
 
   return (
     <Dialog open={value !== null} onOpenChange={(open) => !open && onValueChange(null)}>
-      <DialogContent className="dark border-white/10 bg-neutral-900 text-neutral-100 sm:max-w-[300px]">
+      <DialogContent className="border-white/10 bg-neutral-900 text-neutral-100 sm:max-w-[300px]">
         <DialogHeader>
           <DialogTitle className="text-sm">Rename Item</DialogTitle>
         </DialogHeader>

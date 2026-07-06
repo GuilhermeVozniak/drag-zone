@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import {
   backend,
   events,
@@ -54,14 +54,34 @@ export function useActionSpecs(): ActionSpec[] {
   return specs
 }
 
-/** Settings with an updater that persists. */
+// Settings live in a tiny module store so every consumer re-renders when any
+// component saves a change.
+let settingsState: Settings | null = null
+let settingsLoading = false
+const settingsListeners = new Set<() => void>()
+
+function publishSettings(s: Settings) {
+  settingsState = s
+  settingsListeners.forEach((l) => l())
+}
+
+/** Settings with an updater that persists and notifies all consumers. */
 export function useSettings(): [Settings | null, (s: Settings) => Promise<void>] {
-  const [settings, setSettings] = useState<Settings | null>(null)
+  const settings = useSyncExternalStore(
+    (cb) => {
+      settingsListeners.add(cb)
+      return () => settingsListeners.delete(cb)
+    },
+    () => settingsState
+  )
   useEffect(() => {
-    backend.settings.get().then(setSettings)
+    if (settingsState === null && !settingsLoading) {
+      settingsLoading = true
+      backend.settings.get().then(publishSettings)
+    }
   }, [])
   const update = async (s: Settings) => {
-    setSettings(s)
+    publishSettings(s)
     await backend.settings.set(s)
   }
   return [settings, update]

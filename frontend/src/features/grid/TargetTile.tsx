@@ -2,6 +2,7 @@ import { useState } from "react"
 import type { ActionSpec, Target } from "@/lib/backend"
 import { useFileIcon } from "@/hooks/useFileIcon"
 import { ActionTileIcon } from "@/components/ActionIcon"
+import { Plus, X } from "lucide-react"
 import { DROPBAR_MIME, TARGET_MIME, payloadFromDataTransfer } from "@/lib/dnd"
 import { cn } from "@/lib/utils"
 import {
@@ -15,6 +16,8 @@ import {
 interface TargetTileProps {
   target: Target
   spec: ActionSpec | undefined
+  showKeyOverlay: boolean
+  optionHeld: boolean
   onClick: () => void
   onEdit: () => void
   onRemove: () => void
@@ -26,6 +29,8 @@ interface TargetTileProps {
 export function TargetTile({
   target,
   spec,
+  showKeyOverlay,
+  optionHeld,
   onClick,
   onEdit,
   onRemove,
@@ -80,7 +85,9 @@ export function TargetTile({
             className={cn(
               "flex size-[52px] items-center justify-center rounded-xl",
               "transition-all duration-100",
-              hover && "scale-110 rounded-xl bg-white/10 ring-2 ring-sky-400/80"
+              // A dragged file darkens the hovered icon, like Finder's
+              // drop-target folders — no ring or background.
+              hover && "brightness-[0.6] saturate-150"
             )}
           >
             {nativeIcon ? (
@@ -101,9 +108,27 @@ export function TargetTile({
           <span className="line-clamp-2 w-full text-center text-[11px] leading-tight text-neutral-300">
             {target.label}
           </span>
-          {target.shortcut && (
-            <span className="absolute right-1.5 top-1 rounded bg-white/10 px-1 font-mono text-[9px] text-neutral-400">
+          {target.shortcut && showKeyOverlay && (
+            <span className="absolute left-1/2 top-5 z-10 -translate-x-1/2 rounded-md bg-black/60 px-1.5 py-0.5 font-mono text-[12px] font-semibold text-white">
               {target.shortcut.toUpperCase()}
+            </span>
+          )}
+          {optionHeld && (
+            <span
+              role="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemove()
+              }}
+              className="absolute left-0.5 top-0.5 z-10 flex size-5 items-center justify-center rounded-md bg-neutral-600/90 shadow"
+              title="Remove from Grid"
+            >
+              <X className="size-3 text-white" />
+            </span>
+          )}
+          {target.actionId === "folder" && target.options?.mode === "copy" && (
+            <span className="absolute bottom-5 right-2 z-10 flex size-4 items-center justify-center rounded-full bg-green-500 shadow">
+              <Plus className="size-3 text-white" strokeWidth={3} />
             </span>
           )}
         </button>

@@ -11,13 +11,19 @@ extern void goDragSessionEnded(bool completed);
 extern void goOpenSettings(void);
 extern void goGridVisibility(bool visible);
 extern void goGridBeak(double x);
+extern void goPopOutHotkey(void);
 
 static NSStatusItem *statusItem = nil;
 static NSWindow *gridWindow = nil;
 static NSString *gridWindowTitle = nil;
-static EventHotKeyRef hotKeyRef = NULL;
+static EventHotKeyRef hotKeyRefs[3] = {NULL, NULL, NULL};
 static bool shownForDrag = false;
 static bool pinnedMode = false;
+static bool dragOverlayEnabled = true;
+
+void dz_set_drag_overlay_enabled(bool enabled) {
+    dragOverlayEnabled = enabled;
+}
 
 void dz_set_pinned(bool pinned) {
     pinnedMode = pinned;
@@ -131,6 +137,44 @@ void dz_toggle_grid(void) {
 bool dz_grid_visible(void) {
     NSWindow *win = gridWindow;
     return win != nil && win.isVisible;
+}
+
+// statusSymbol returns the SF Symbol name for a status-item state.
+static NSString *statusSymbol(int state) {
+    switch (state) {
+    case 1:
+        return @"arrow.down";
+    case 2:
+        return @"arrow.triangle.2.circlepath";
+    case 3:
+        return @"checkmark";
+    case 4:
+        return @"xmark";
+    default:
+        return @"tray.and.arrow.down";
+    }
+}
+
+void dz_set_status_state(int state) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (statusItem == nil) {
+            return;
+        }
+        NSImage *img = [NSImage imageWithSystemSymbolName:statusSymbol(state)
+                                 accessibilityDescription:@"DragZone"];
+        img.template = YES;
+        statusItem.button.image = img;
+    });
+}
+
+char *dz_clipboard_file_paths(void) {
+    NSArray<NSURL *> *urls =
+        [NSPasteboard.generalPasteboard readObjectsForClasses:@[ NSURL.class ]
+                                                      options:@{NSPasteboardURLReadingFileURLsOnlyKey : @YES}];
+    if (urls.count == 0) {
+        return NULL;
+    }
+    return jsonFromURLs(urls);
 }
 
 // --- Status item -------------------------------------------------------
@@ -367,16 +411,26 @@ int dz_set_login_item(bool enabled) {
 // --- Global hotkey ------------------------------------------------------
 
 static OSStatus hotKeyHandler(EventHandlerCallRef next, EventRef event, void *userData) {
-    dz_toggle_grid();
+    EventHotKeyID hkid;
+    GetEventParameter(event, kEventParamDirectObject, typeEventHotKeyID, NULL,
+                      sizeof(hkid), NULL, &hkid);
+    if (hkid.id == 2) {
+        goPopOutHotkey();
+    } else {
+        dz_toggle_grid();
+    }
     return noErr;
 }
 
-void dz_set_hotkey_f(int fkey) {
+void dz_set_hotkey_f(int fkey, int slot) {
+    if (slot < 1 || slot > 2) {
+        return;
+    }
     dispatch_async(dispatch_get_main_queue(), ^{
         static bool handlerInstalled = false;
-        if (hotKeyRef != NULL) {
-            UnregisterEventHotKey(hotKeyRef);
-            hotKeyRef = NULL;
+        if (hotKeyRefs[slot] != NULL) {
+            UnregisterEventHotKey(hotKeyRefs[slot]);
+            hotKeyRefs[slot] = NULL;
         }
         if (fkey <= 0 || fkey > 12) {
             return;
@@ -389,8 +443,8 @@ void dz_set_hotkey_f(int fkey) {
         static const UInt32 codes[13] = {0,   kVK_F1, kVK_F2, kVK_F3, kVK_F4,
                                          kVK_F5, kVK_F6, kVK_F7, kVK_F8, kVK_F9,
                                          kVK_F10, kVK_F11, kVK_F12};
-        EventHotKeyID hkid = {.signature = 'dzhk', .id = 1};
-        RegisterEventHotKey(codes[fkey], 0, hkid, GetApplicationEventTarget(), 0, &hotKeyRef);
+        EventHotKeyID hkid = {.signature = 'dzhk', .id = (UInt32)slot};
+        RegisterEventHotKey(codes[fkey], 0, hkid, GetApplicationEventTarget(), 0, &hotKeyRefs[slot]);
     });
 }
 
@@ -444,7 +498,7 @@ void dz_init(const char *windowTitle) {
         }
 
         statusItem = [NSStatusBar.systemStatusBar statusItemWithLength:NSSquareStatusItemLength];
-        NSImage *img = [NSImage imageWithSystemSymbolName:@"square.grid.3x3.topleft.filled"
+        NSImage *img = [NSImage imageWithSystemSymbolName:statusSymbol(0)
                                  accessibilityDescription:@"DragZone"];
         img.template = YES;
         statusItem.button.image = img;
@@ -469,6 +523,9 @@ void dz_init(const char *windowTitle) {
         // Show the grid when a file drag reaches the menu bar area.
         [NSEvent addGlobalMonitorForEventsMatchingMask:NSEventMaskLeftMouseDragged
                                                handler:^(NSEvent *e) {
+            if (!dragOverlayEnabled) {
+                return;
+            }
             NSPasteboard *pb = [NSPasteboard pasteboardWithName:NSPasteboardNameDrag];
             if ([pb availableTypeFromArray:@[ NSPasteboardTypeFileURL ]] == nil) {
                 return;

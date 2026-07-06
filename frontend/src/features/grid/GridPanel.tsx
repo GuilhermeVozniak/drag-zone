@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { backend, type Target } from "@/lib/backend"
 import {
   useActionSpecs,
@@ -10,6 +10,7 @@ import {
 import { useNativeFileDrop } from "@/hooks/useNativeFileDrop"
 import { useTargetShortcuts } from "@/hooks/useTargetShortcuts"
 import {
+  ChevronsDown,
   ChevronsUp,
   Copy,
   FolderCog,
@@ -19,6 +20,7 @@ import {
   Wrench,
 } from "lucide-react"
 import { ActionTileIcon } from "@/components/ActionIcon"
+import { RecentSharesPill } from "./RecentSharesPill"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,8 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { DropBar } from "@/features/dropbar/DropBar"
-import { EmptyTopTiles } from "@/features/dropbar/EmptyTopTiles"
+import { TopSection } from "@/features/dropbar/TopSection"
 import { TaskList } from "@/features/tasks/TaskList"
 import { AddTargetDialog } from "./AddTargetDialog"
 import { TargetTile } from "./TargetTile"
@@ -44,6 +45,37 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<Target | null>(null)
   const [addingSpecId, setAddingSpecId] = useState<string | null>(null)
+  const [topCollapsed, setTopCollapsed] = useState(false)
+  const [optionHeld, setOptionHeld] = useState(false)
+
+  // Option puts the grid in delete mode (X badges on tiles), like Dropzone.
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => e.altKey && setOptionHeld(true)
+    const up = (e: KeyboardEvent) => !e.altKey && setOptionHeld(false)
+    const blur = () => setOptionHeld(false)
+    window.addEventListener("keydown", down)
+    window.addEventListener("keyup", up)
+    window.addEventListener("blur", blur)
+    return () => {
+      window.removeEventListener("keydown", down)
+      window.removeEventListener("keyup", up)
+      window.removeEventListener("blur", blur)
+    }
+  }, [])
+
+  // Cmd-V stashes the clipboard into the Drop Bar.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement
+      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable) return
+      if (e.metaKey && e.key.toLowerCase() === "v") {
+        e.preventDefault()
+        backend.dropBar.paste()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
   // "+" menu selection: actions without options are added straight to the
   // grid (Dropzone's SkipConfig behavior); the rest open the config dialog.
@@ -89,6 +121,8 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
           key={t.id}
           target={t}
           spec={specFor(t)}
+          showKeyOverlay={settings?.showKeyOverlays ?? true}
+          optionHeld={optionHeld}
           onClick={() => backend.click(t.id)}
           onEdit={() => {
             setEditing(t)
@@ -121,7 +155,7 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
                 <Plus className="size-4 text-neutral-200" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="dark max-h-[380px] overflow-y-auto">
+            <DropdownMenuContent align="start" className="max-h-[380px] overflow-y-auto">
               {specs.map((s) => (
                 <DropdownMenuItem key={s.id} onClick={() => chooseSpec(s.id)}>
                   <ActionTileIcon actionId={s.id} icon={s.icon} className="size-5" />
@@ -134,10 +168,18 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <HeaderButton title="Hide grid" onClick={() => backend.window.hide()}>
-            <ChevronsUp className="size-4 text-neutral-200" />
+          <HeaderButton
+            title={topCollapsed ? "Show Drop Bar" : "Hide Drop Bar"}
+            onClick={() => setTopCollapsed((c) => !c)}
+          >
+            {topCollapsed ? (
+              <ChevronsDown className="size-4 text-neutral-200" />
+            ) : (
+              <ChevronsUp className="size-4 text-neutral-200" />
+            )}
           </HeaderButton>
         </div>
+        <RecentSharesPill />
         <div className="flex items-center">
           <HeaderButton
             title="Pop out Drop Bar"
@@ -155,7 +197,7 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
                 <SettingsIcon className="size-4 text-neutral-200" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="dark">
+            <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onOpenSettings}>
                 <SettingsIcon className="size-3.5" /> Settings…
               </DropdownMenuItem>
@@ -174,19 +216,14 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
         </div>
       </header>
 
-      {dropBarItems.length === 0 ? (
-        <EmptyTopTiles
+      {!topCollapsed && (
+        <TopSection
+          items={dropBarItems}
           onAddClick={() => {
             setEditing(null)
             setAddingSpecId(null)
             setAddOpen(true)
           }}
-        />
-      ) : (
-        <DropBar
-          items={dropBarItems}
-          onRemove={(id) => backend.dropBar.remove(id)}
-          onClear={() => backend.dropBar.clear()}
         />
       )}
 
@@ -199,9 +236,11 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
         )}
       </div>
 
-      <div className="pb-2">
-        <TaskList tasks={tasks} />
-      </div>
+      {tasks.length > 0 && (
+        <Section label="TASK PROGRESS">
+          <TaskList tasks={tasks} specFor={(id) => specs.find((s) => s.id === id)} targets={targets} />
+        </Section>
+      )}
 
       <AddTargetDialog
         open={addOpen}

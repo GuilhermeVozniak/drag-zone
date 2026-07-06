@@ -1,7 +1,7 @@
 import { backend } from "@/lib/backend"
 import { useDropBar } from "@/hooks/useBackend"
 import { PanelTopClose } from "lucide-react"
-import { DropBar } from "./DropBar"
+import { TopSection } from "./TopSection"
 
 /** Compact always-on-top Drop Bar shown when popped out of the grid. */
 export function PopoutBar() {
@@ -23,11 +23,7 @@ export function PopoutBar() {
           <PanelTopClose className="size-3.5 text-neutral-400" />
         </button>
       </header>
-      <DropBar
-        items={items}
-        onRemove={(id) => backend.dropBar.remove(id)}
-        onClear={() => backend.dropBar.clear()}
-      />
+      <TopSection items={items} showAddToGrid={false} />
     </div>
   )
 }
