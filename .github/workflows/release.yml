@@ -14,9 +14,7 @@ permissions:
 jobs:
   release:
     name: Build, sign, notarize
-    # macos-latest, like option-tab: older images (macos-14) lack Apple's
-    # Developer ID intermediate CA, leaving the imported identity "invalid".
-    runs-on: macos-latest
+    runs-on: macos-14
     env:
       # secrets are not readable in step-level `if:`; surface presence here.
       HAS_MACOS_SIGNING: ${{ secrets.MACOS_CERT_P12 != '' }}
@@ -79,22 +77,32 @@ jobs:
           # regardless of what the runner image preinstalls.
           curl -sSLo "$RUNNER_TEMP/DeveloperIDG2CA.cer" https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
           security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN"
-          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security list-keychains -d user -s "$KEYCHAIN" login.keychain
+          # -A + explicit pkcs12 typing: the only flag set that has produced a
+          # VALID identity on this repo's cert (stricter -T-only imports left
+          # the identity unusable and find-identity reported 0 valid).
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
           rm "$RUNNER_TEMP/cert.p12"
-          # fail here, not at codesign, if the p12 lacks a Developer ID identity.
-          security find-identity -v -p codesigning "$KEYCHAIN" | grep "Developer ID Application"
+          # fail here, not at codesign, if the identity is missing or invalid.
+          security find-identity -v -p codesigning "$KEYCHAIN" | tail -1
+          security find-identity -v -p codesigning "$KEYCHAIN" | grep -q "1 valid identities found"
 
       - name: Sign app
         if: env.HAS_MACOS_SIGNING == 'true'
         run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          # Sign by the identity's hash with --keychain pinned: name-based
+          # resolution through the search list reported "no identity found"
+          # on this runner even with a valid imported identity.
+          HASH=$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/Developer ID Application/{print $2; exit}')
+          test -n "$HASH"
           # dz is a Mach-O in Resources; --deep does not descend there, and
           # notarization rejects unsigned nested binaries, so sign it first.
-          codesign --force --options runtime --timestamp \
-            --sign "Developer ID Application" build/bin/dragzone.app/Contents/Resources/dz
-          codesign --force --deep --options runtime --timestamp \
-            --sign "Developer ID Application" build/bin/dragzone.app
+          codesign --force --options runtime --timestamp --keychain "$KEYCHAIN" \
+            --sign "$HASH" build/bin/dragzone.app/Contents/Resources/dz
+          codesign --force --deep --options runtime --timestamp --keychain "$KEYCHAIN" \
+            --sign "$HASH" build/bin/dragzone.app
           codesign --verify --deep --strict --verbose=2 build/bin/dragzone.app
 
       - name: Create DMG
@@ -110,7 +118,10 @@ jobs:
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
           DMG="DragZone-${{ steps.version.outputs.version }}.dmg"
-          codesign --force --timestamp --sign "Developer ID Application" "$DMG"
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          HASH=$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/Developer ID Application/{print $2; exit}')
+          test -n "$HASH"
+          codesign --force --timestamp --keychain "$KEYCHAIN" --sign "$HASH" "$DMG"
           xcrun notarytool submit "$DMG" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
             --password "$APPLE_APP_PASSWORD" --wait
           # staple fails if notarization did not fully succeed, failing the job.
