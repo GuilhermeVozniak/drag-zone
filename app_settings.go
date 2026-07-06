@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -170,19 +171,31 @@ func findCLIBinary() (string, error) {
 	return "", fmt.Errorf("dz binary not found next to the app; build it with: go build -o build/bin/dz ./cmd/dz")
 }
 
-// UpdateInfo describes the newest available code revision.
+// UpdateInfo describes the newest published release relative to this build.
 type UpdateInfo struct {
-	Version   string `json:"version"`   // running version
-	LatestSHA string `json:"latestSha"` // newest commit on main (short)
-	LatestAt  string `json:"latestAt"`  // newest commit date
-	URL       string `json:"url"`
+	Version     string `json:"version"`     // running version
+	Latest      string `json:"latest"`      // newest released version
+	Available   bool   `json:"available"`   // latest is newer than running
+	URL         string `json:"url"`         // release page
+	DownloadURL string `json:"downloadUrl"` // direct DMG asset, when published
+	PublishedAt string `json:"publishedAt"`
 }
 
-// CheckForUpdates fetches the newest commit of the project repository.
+const latestReleaseAPI = "https://api.github.com/repos/GuilhermeVozniak/drag-zone/releases/latest"
+
+// CheckForUpdates fetches the newest published release and reports whether
+// it is newer than the running version.
 func (a *App) CheckForUpdates() (UpdateInfo, error) {
-	info := UpdateInfo{Version: appVersion, URL: "https://github.com/GuilhermeVozniak/drag-zone"}
-	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet,
-		"https://api.github.com/repos/GuilhermeVozniak/drag-zone/commits/main", nil)
+	return a.checkForUpdates(latestReleaseAPI)
+}
+
+func (a *App) checkForUpdates(apiURL string) (UpdateInfo, error) {
+	info := UpdateInfo{Version: appVersion, URL: "https://github.com/GuilhermeVozniak/drag-zone/releases"}
+	ctx := a.ctx
+	if ctx == nil { // before Wails startup (tests)
+		ctx = context.Background()
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return info, err
 	}
@@ -195,22 +208,96 @@ func (a *App) CheckForUpdates() (UpdateInfo, error) {
 	if resp.StatusCode != http.StatusOK {
 		return info, fmt.Errorf("checking for updates: %s", resp.Status)
 	}
-	var commit struct {
-		SHA    string `json:"sha"`
-		Commit struct {
-			Committer struct {
-				Date string `json:"date"`
-			} `json:"committer"`
-		} `json:"commit"`
+	var release struct {
+		TagName     string `json:"tag_name"`
+		HTMLURL     string `json:"html_url"`
+		PublishedAt string `json:"published_at"`
+		Assets      []struct {
+			Name               string `json:"name"`
+			BrowserDownloadURL string `json:"browser_download_url"`
+		} `json:"assets"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&commit); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return info, err
 	}
-	if len(commit.SHA) >= 7 {
-		info.LatestSHA = commit.SHA[:7]
+	info.Latest = strings.TrimPrefix(release.TagName, "v")
+	info.PublishedAt = release.PublishedAt
+	if release.HTMLURL != "" {
+		info.URL = release.HTMLURL
 	}
-	info.LatestAt = commit.Commit.Committer.Date
+	for _, asset := range release.Assets {
+		if strings.HasSuffix(asset.Name, ".dmg") {
+			info.DownloadURL = asset.BrowserDownloadURL
+			break
+		}
+	}
+	info.Available = versionNewer(info.Latest, appVersion)
 	return info, nil
+}
+
+// versionNewer reports whether version a is strictly newer than b, comparing
+// up to three numeric components ("0.10.2" > "0.9.9"); a leading "v" and any
+// non-numeric suffix per component are ignored.
+func versionNewer(a, b string) bool {
+	pa, pb := versionParts(a), versionParts(b)
+	for i := 0; i < 3; i++ {
+		if pa[i] != pb[i] {
+			return pa[i] > pb[i]
+		}
+	}
+	return false
+}
+
+func versionParts(v string) [3]int {
+	v = strings.TrimPrefix(strings.TrimSpace(v), "v")
+	var parts [3]int
+	for i, s := range strings.SplitN(v, ".", 3) {
+		digits := s
+		for j, r := range s {
+			if r < '0' || r > '9' {
+				digits = s[:j]
+				break
+			}
+		}
+		parts[i], _ = strconv.Atoi(digits)
+	}
+	return parts
+}
+
+// autoUpdateLoop checks for updates shortly after launch and then daily,
+// consulting the AutoUpdateCheck setting at every tick so toggling it takes
+// effect without a restart. Runs until the app context is cancelled.
+func (a *App) autoUpdateLoop() {
+	timer := time.NewTimer(10 * time.Second)
+	defer timer.Stop()
+	for {
+		select {
+		case <-a.ctx.Done():
+			return
+		case <-timer.C:
+		}
+		a.autoUpdateCheck()
+		timer.Reset(24 * time.Hour)
+	}
+}
+
+// autoUpdateCheck notifies about a newer release, once per version.
+func (a *App) autoUpdateCheck() {
+	if !a.settings.Get().AutoUpdateCheck {
+		return
+	}
+	info, err := a.CheckForUpdates()
+	if err != nil || !info.Available {
+		return
+	}
+	s := a.settings.Get()
+	if s.LastUpdateNotified == info.Latest {
+		return
+	}
+	s.LastUpdateNotified = info.Latest
+	_ = a.settings.Set(s)
+	a.services.Notify("DragZone "+info.Latest+" is available",
+		"Open Settings › Updates to download the new version.")
 }
 
 // GetVersion returns the running app version.

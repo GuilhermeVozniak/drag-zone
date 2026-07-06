@@ -238,6 +238,9 @@ func (a *App) startup(ctx context.Context) {
 	platform.InitNative("DragZone")
 	a.applySettings(a.settings.Get())
 
+	// Background update checks (startup + daily), gated on the setting.
+	go a.autoUpdateLoop()
+
 	if srv, err := ipc.Serve(a.handleIPC); err == nil {
 		a.ipcServer = srv
 	}

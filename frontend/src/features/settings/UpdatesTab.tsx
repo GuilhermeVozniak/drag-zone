@@ -9,7 +9,7 @@ interface UpdatesTabProps {
   update: (s: Settings) => void
 }
 
-/** Mirrors Dropzone 4's Updates tab (backed by the GitHub repository). */
+/** Mirrors Dropzone 4's Updates tab (backed by GitHub Releases). */
 export function UpdatesTab({ settings, update }: UpdatesTabProps) {
   const [info, setInfo] = useState<UpdateInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -27,6 +27,12 @@ export function UpdatesTab({ settings, update }: UpdatesTabProps) {
     }
   }
 
+  // Check when the tab opens so the answer is visible without a click.
+  useEffect(() => {
+    check()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   return (
     <div className="flex flex-col gap-3.5">
       <SettingRow label="Automatically check for updates">
@@ -40,17 +46,33 @@ export function UpdatesTab({ settings, update }: UpdatesTabProps) {
           {checking ? "Checking…" : "Check Now"}
         </Button>
       </div>
-      {info && (
+      {info && info.available && (
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-center text-[12px] font-medium text-neutral-100">
+            Version {info.latest} is available
+            {info.publishedAt
+              ? ` (${new Date(info.publishedAt).toLocaleDateString()})`
+              : ""}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => backend.openURL(info.downloadUrl || info.url)}
+            >
+              Download {info.latest}
+            </Button>
+            <button
+              className="text-[11px] text-sky-400 hover:underline"
+              onClick={() => backend.openURL(info.url)}
+            >
+              release notes
+            </button>
+          </div>
+        </div>
+      )}
+      {info && !info.available && (
         <p className="text-center text-[11px] text-neutral-400">
-          Latest revision: {info.latestSha}
-          {info.latestAt ? ` (${new Date(info.latestAt).toLocaleString()})` : ""}
-          {" — "}
-          <button
-            className="text-sky-400 hover:underline"
-            onClick={() => window.open(info.url)}
-          >
-            open repository
-          </button>
+          You're up to date.
         </p>
       )}
       {error && <p className="text-center text-[11px] text-red-400">{error}</p>}

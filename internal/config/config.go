@@ -26,6 +26,9 @@ type Settings struct {
 	NotifyOnComplete  bool   `json:"notifyOnComplete"`
 	AutoUpdateCheck   bool   `json:"autoUpdateCheck"`
 	OnboardingSeen    bool   `json:"onboardingSeen"` // first-run carousel dismissed
+	// LastUpdateNotified is the newest release version the user has already
+	// been notified about, so the automatic check nags once per version.
+	LastUpdateNotified string `json:"lastUpdateNotified,omitempty"`
 }
 
 // Defaults returns the settings used on first launch.
