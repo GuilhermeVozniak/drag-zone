@@ -1,6 +1,19 @@
-build/bin
-node_modules
-frontend/dist
-frontend/wailsjs
+node_modules/
+dist/
+out/
+.next/
+.turbo/
+apps/desktop/build/bin/
+apps/desktop/frontend/dist/
+apps/desktop/frontend/wailsjs/
+coverage/
+playwright-report/
+test-results/
 *.log
 .DS_Store
+
+# Wails frontend build cache
+apps/desktop/frontend/package.json.md5
+
+# DMG background intermediates (bg.tiff is the committed artifact)
+apps/desktop/build/darwin/dmg/bg@*.png

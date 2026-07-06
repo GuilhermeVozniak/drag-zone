@@ -1,6 +1,7 @@
 {
   "title": "DragZone Installer",
   "icon": "../../bin/dragzone.app/Contents/Resources/iconfile.icns",
+  "background": "bg.tiff",
   "icon-size": 128,
   "window": {
     "position": { "x": 360, "y": 220 },

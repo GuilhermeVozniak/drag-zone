@@ -1,30 +1,54 @@
 # DragZone — Contributor Guide
 
-Dropzone 4 clone: Wails v2 (Go) menu bar app + React/TS/shadcn frontend +
-cgo/Objective-C macOS bridge. Read `docs/ARCHITECTURE.md` for the module map,
-`docs/ACTIONS.md` for the action API, `docs/DROPZONE4-PARITY.md` for the
-feature spec being cloned.
+Bun monorepo:
+- `apps/desktop` — the Dropzone 4 clone: Wails v2 (Go) menu bar app +
+  React/TS/shadcn frontend + cgo/Objective-C macOS bridge.
+- `apps/web` — the marketing landing page: Next.js + shadcn, static-exported
+  to GitHub Pages (see `.github/workflows/deploy-web.yml`).
+- `packages/shared` — the release-asset naming contract used by both the web
+  download links and the release workflow.
 
-## Commands (run from the repo root — always)
+Read `docs/ARCHITECTURE.md` for the desktop module map (paths there are
+relative to `apps/desktop`), `docs/ACTIONS.md` for the action API,
+`docs/DROPZONE4-PARITY.md` for the feature spec, `docs/RELEASE.md` for signing
+and notarization.
+
+## Commands
+
+Monorepo (from repo root — bun workspaces + turbo):
+
+```sh
+bun install                        # install every workspace's deps
+bun run build                      # build the landing page (apps/web)
+bun run test                       # web + shared unit tests (vitest)
+bun run lint                       # biome check web + shared
+```
+
+Desktop app (run from `apps/desktop` — always):
 
 ```sh
 wails build                        # full app → build/bin/dragzone.app
 wails dev                          # live-reload development
 wails generate module              # regenerate frontend/wailsjs after changing App bindings
 go build -o build/bin/dz ./cmd/dz  # the dz CLI companion
-go test ./...                       # backend + App-facade tests
-cd frontend && npm run build       # frontend typecheck + bundle only
-cd frontend && npm run test        # frontend unit tests (vitest)
-gofmt -l . | grep -v frontend      # must print nothing
+go test ./...                      # backend + App-facade tests
+bun run --filter=@dragzone/desktop-frontend test   # frontend unit tests (vitest)
+gofmt -l .                         # must print nothing
 ```
 
 Gotchas:
-- `wails` commands FAIL from `frontend/` with a misleading
-  `frontend/wails.json: no such file` error. Run them from the root.
+- `wails` and `go` commands run from `apps/desktop`, not the repo root
+  (`go.work` lets `go` find the module from the root, but `wails` needs the
+  app dir; from `frontend/` it fails with a misleading `wails.json` error).
+- The frontend uses **bun** (see `wails.json` `frontend:install`/`build`).
 - After adding/renaming any bound `App` method or bound struct field, run
   `wails generate module` before touching the frontend.
-- `frontend/wailsjs` and `frontend/dist` are generated and gitignored;
-  `wails build` recreates both.
+- `apps/desktop/frontend/{wailsjs,dist}` are generated and gitignored;
+  `wails build` recreates both. `go test` embeds `frontend/dist`, so run
+  `wails build` before `go test` on a clean tree.
+- The landing page's advertised version is pinned in
+  `apps/web/lib/download.ts` (`APP_VERSION`) — bump it in lockstep with a
+  release tag so the download link resolves.
 - Tests that touch stores must set `t.Setenv(storage.EnvDataDir, t.TempDir())`
   or they will write to the real `~/Library/Application Support/DragZone`.
 

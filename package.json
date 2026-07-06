@@ -1,0 +1,26 @@
+{
+  "name": "drag-zone",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.13",
+  "engines": {
+    "bun": ">=1.1",
+    "node": ">=20"
+  },
+  "workspaces": [
+    "apps/web",
+    "apps/desktop/frontend",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build --filter=@dragzone/web",
+    "lint": "turbo run lint --filter=@dragzone/web --filter=@dragzone/shared",
+    "test": "turbo run test --filter=@dragzone/web --filter=@dragzone/shared",
+    "dev": "turbo run dev --filter=@dragzone/web"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.8.0"
+  }
+}

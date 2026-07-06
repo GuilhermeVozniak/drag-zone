@@ -1,0 +1,99 @@
+/* DragZone landing — the app's own material rendered large: a deep midnight
+   backdrop lit by the icon's sky→indigo→violet gradient, frosted glass panels,
+   and the borderless popover the menu bar drops. shadcn primitives read the
+   tokens below through the @theme map. */
+
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+
+  --background: #080b17;
+  --foreground: #eef2ff;
+  --muted-foreground: rgba(214, 223, 255, 0.6);
+
+  /* Brand ramp, straight off the app icon. */
+  --sky: #4cc7f7;
+  --blue: #3b82f6;
+  --indigo: #6366f1;
+  --violet: #7c5cff;
+
+  --primary: var(--indigo);
+  --primary-foreground: #ffffff;
+  --ring: color-mix(in srgb, var(--indigo) 70%, #ffffff);
+  --radius: 1rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-sky: var(--sky);
+  --color-blue: var(--blue);
+  --color-indigo: var(--indigo);
+  --color-violet: var(--violet);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --radius-lg: var(--radius);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(1000px 560px at 78% -14%, rgba(124, 92, 255, 0.26), transparent 60%),
+    radial-gradient(820px 520px at -6% 8%, rgba(76, 199, 247, 0.16), transparent 58%),
+    radial-gradient(1000px 720px at 50% 118%, rgba(99, 102, 241, 0.22), transparent 60%),
+    var(--background);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 0.85em;
+  color: var(--foreground);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dz-drop {
+    animation: dz-drop-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .dz-float {
+    animation: dz-float 5.5s ease-in-out infinite;
+  }
+}
+
+@keyframes dz-drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dz-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(-3deg);
+  }
+}

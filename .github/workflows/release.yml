@@ -1,9 +1,9 @@
 name: Release
 
 # Cut a release by pushing a version tag, e.g.:
-#   git tag v0.3.2 && git push origin v0.3.2
-# Mirrors the proven option-tab release pipeline (same secret names and
-# signing/notarization sequence); see docs/RELEASE.md for the secrets.
+#   git tag v0.3.7 && git push origin v0.3.7
+# Builds a signed + notarized universal DMG named per @dragzone/shared's
+# contract (dragzone_<version>_darwin_universal.dmg). See docs/RELEASE.md.
 on:
   push:
     tags: ['v*']
@@ -24,15 +24,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
-          cache: true
+          go-version-file: apps/desktop/go.mod
+          cache-dependency-path: apps/desktop/go.sum
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - run: bun install --frozen-lockfile
 
       - name: Derive version
         id: version
@@ -44,9 +41,11 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Build app (universal)
+        working-directory: apps/desktop
         run: wails build -platform darwin/universal -ldflags "-X main.appVersion=${{ steps.version.outputs.version }}"
 
       - name: Bundle universal dz CLI into Resources
+        working-directory: apps/desktop
         run: |
           CGO_ENABLED=0 GOARCH=arm64 go build -o "$RUNNER_TEMP/dz-arm64" ./cmd/dz
           CGO_ENABLED=0 GOARCH=amd64 go build -o "$RUNNER_TEMP/dz-amd64" ./cmd/dz
@@ -54,7 +53,7 @@ jobs:
 
       - name: Stamp bundle version
         run: |
-          PLIST=build/bin/dragzone.app/Contents/Info.plist
+          PLIST=apps/desktop/build/bin/dragzone.app/Contents/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.version }}" "$PLIST"
 
@@ -73,21 +72,14 @@ jobs:
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           # Keychain Access p12 exports hold only the leaf cert + key; import
-          # Apple's Developer ID G2 intermediate too so the chain validates
-          # regardless of what the runner image preinstalls.
+          # Apple's Developer ID G2 intermediate too so the chain validates.
           curl -sSLo "$RUNNER_TEMP/DeveloperIDG2CA.cer" https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
           security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN"
-          # -A + explicit pkcs12 typing: the only flag set that has produced a
-          # VALID identity on this repo's cert (stricter -T-only imports left
-          # the identity unusable and find-identity reported 0 valid).
           security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
           security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
           rm "$RUNNER_TEMP/cert.p12"
-          # Fail here, not at codesign, if the p12 doesn't hold a VALID
-          # Developer ID identity. A common trap: exporting the look-alike
-          # "Apple Development" row from Keychain Access — it imports as "1
-          # valid identity" but cannot sign for distribution.
+          # Fail here (not at codesign) if the p12 isn't a Developer ID identity.
           security find-identity -v -p codesigning "$KEYCHAIN" | tail -1
           if ! security find-identity -v -p codesigning "$KEYCHAIN" | grep "Developer ID Application"; then
             echo '::error::MACOS_CERT_P12 holds no valid "Developer ID Application" identity - re-export that exact row (not "Apple Development") from Keychain Access.'
@@ -96,11 +88,11 @@ jobs:
 
       - name: Sign app
         if: env.HAS_MACOS_SIGNING == 'true'
+        working-directory: apps/desktop
         run: |
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
-          # Sign by the identity's hash with --keychain pinned: name-based
-          # resolution through the search list reported "no identity found"
-          # on this runner even with a valid imported identity.
+          # Sign by the identity's hash with --keychain pinned (name-based
+          # resolution reported "no identity found" on this runner).
           HASH=$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/Developer ID Application/{print $2; exit}')
           test -n "$HASH"
           # dz is a Mach-O in Resources; --deep does not descend there, and
@@ -113,8 +105,8 @@ jobs:
 
       - name: Create DMG
         run: |
-          npx --yes appdmg build/darwin/dmg/appdmg.json \
-            "DragZone-${{ steps.version.outputs.version }}.dmg"
+          npx --yes appdmg apps/desktop/build/darwin/dmg/appdmg.json \
+            "dragzone_${{ steps.version.outputs.version }}_darwin_universal.dmg"
 
       - name: Sign, notarize, and staple dmg
         if: env.HAS_MACOS_SIGNING == 'true'
@@ -123,7 +115,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
-          DMG="DragZone-${{ steps.version.outputs.version }}.dmg"
+          DMG="dragzone_${{ steps.version.outputs.version }}_darwin_universal.dmg"
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           HASH=$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/Developer ID Application/{print $2; exit}')
           test -n "$HASH"
@@ -137,5 +129,5 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: DragZone-*.dmg
+          files: dragzone_*.dmg
           generate_release_notes: true
