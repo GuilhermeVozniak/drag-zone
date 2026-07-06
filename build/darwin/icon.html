@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!-- DragZone app icon, 1024x1024, transparent margins. Rendered to PNG via
+     headless Chrome with --default-background-color=00000000. Big Sur-style
+     squircle (824px, ~22.5% radius) with the app's tray+down-arrow motif. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4cc7f7"/>
+      <stop offset="55%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#5b4ce6"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="30%" cy="12%" r="90%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glyphShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#1e2a6e" flood-opacity="0.35"/>
+    </filter>
+    <filter id="plateShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="24" flood-color="#000000" flood-opacity="0.30"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle plate -->
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)" filter="url(#plateShadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#sheen)"/>
+
+  <!-- Glyph: arrow dropping into an open tray -->
+  <g filter="url(#glyphShadow)">
+    <!-- arrow: shaft + head, tip dips between the tray walls -->
+    <path fill="#ffffff" d="
+      M 512 640
+      C 505 640 498 637 493 630
+      L 391 505
+      C 380 491 390 470 408 470
+      L 462 470
+      L 462 316
+      C 462 296 478 280 498 280
+      L 526 280
+      C 546 280 562 296 562 316
+      L 562 470
+      L 616 470
+      C 634 470 644 491 633 505
+      L 531 630
+      C 526 637 519 640 512 640
+    "/>
+    <!-- tray: open-topped container, thick rounded stroke -->
+    <path fill="none" stroke="#ffffff" stroke-width="58" stroke-linecap="round"
+          d="M 315 552 L 315 656 Q 315 714 373 714 L 651 714 Q 709 714 709 656 L 709 552"/>
+  </g>
+</svg>
+</body>
+</html>
