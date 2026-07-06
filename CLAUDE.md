@@ -12,8 +12,9 @@ wails build                        # full app → build/bin/dragzone.app
 wails dev                          # live-reload development
 wails generate module              # regenerate frontend/wailsjs after changing App bindings
 go build -o build/bin/dz ./cmd/dz  # the dz CLI companion
-go test ./internal/...             # backend tests
+go test ./...                       # backend + App-facade tests
 cd frontend && npm run build       # frontend typecheck + bundle only
+cd frontend && npm run test        # frontend unit tests (vitest)
 gofmt -l . | grep -v frontend      # must print nothing
 ```
 

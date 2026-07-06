@@ -68,10 +68,16 @@ func parseFKey(shortcut string) int {
 // one (images, PDFs, videos), otherwise the Finder icon.
 func (a *App) FileIcon(path string) string {
 	a.iconMu.Lock()
-	defer a.iconMu.Unlock()
 	if icon, ok := a.iconCache[path]; ok {
+		a.iconMu.Unlock()
 		return icon
 	}
+	a.iconMu.Unlock()
+
+	// Generate outside the lock: QuickLook thumbnailing can take up to a
+	// couple of seconds, and holding iconMu across it would serialize every
+	// tile's icon load — including the several thumbnails of one multi-file
+	// stack — behind a single slow file.
 	var icon string
 	if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
 		icon, _ = platform.FileThumbnailPNGBase64(path, 64)
@@ -81,7 +87,10 @@ func (a *App) FileIcon(path string) string {
 			icon = fallback
 		}
 	}
+
+	a.iconMu.Lock()
 	a.iconCache[path] = icon
+	a.iconMu.Unlock()
 	return icon
 }
 
@@ -207,4 +216,14 @@ func (a *App) CheckForUpdates() (UpdateInfo, error) {
 // GetVersion returns the running app version.
 func (a *App) GetVersion() string {
 	return appVersion
+}
+
+// About shows a small native dialog with the app version, like the menu-bar
+// app's About item.
+func (a *App) About() {
+	_, _ = runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+		Type:    runtime.InfoDialog,
+		Title:   "DragZone",
+		Message: "DragZone " + appVersion + "\n\nA Dropzone 4–style menu bar app for macOS.\nBuilt with Wails, Go, and React.",
+	})
 }

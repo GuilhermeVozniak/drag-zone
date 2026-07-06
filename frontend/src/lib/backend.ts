@@ -43,6 +43,7 @@ export const backend = {
     add: App.AddTarget,
     addFromPaths: App.AddTargetsFromPaths,
     update: (t: Target) => App.UpdateTarget(t),
+    duplicate: App.DuplicateTarget,
     remove: App.RemoveTarget,
     move: App.MoveTarget,
   },
@@ -95,9 +96,11 @@ export const backend = {
   },
   dragOut: App.StartDragOut,
   fileIcon: App.FileIcon,
+  openURL: App.OpenURL,
   window: {
     hide: App.HideWindow,
     quit: App.Quit,
+    about: App.About,
   },
 }
 

@@ -18,15 +18,34 @@ function itemIcon(item: DropBarItem) {
   return Type
 }
 
-/** Fanned, photo-bordered thumbnails for a stack, like Dropzone's stacks. */
+/**
+ * Fanned, photo-bordered thumbnails for a stack, like Dropzone's stacks.
+ * Hovering the tile spreads the fan and lifts + highlights the front image, so
+ * it's clear which stack you're about to grab. paths[0] is drawn on top.
+ */
 function StackFan({ paths }: { paths: string[] }) {
   const first = useFileIcon(paths[0])
   const second = useFileIcon(paths[1])
   const third = useFileIcon(paths[2])
   const layers = [
-    { icon: third, className: "-rotate-10 -translate-x-2" },
-    { icon: second, className: "rotate-8 translate-x-2" },
-    { icon: first, className: "rotate-0" },
+    {
+      icon: third,
+      base: "-rotate-[10deg] -translate-x-2",
+      hover:
+        "group-hover:-rotate-[18deg] group-hover:-translate-x-4 group-hover:-translate-y-0.5",
+    },
+    {
+      icon: second,
+      base: "rotate-[8deg] translate-x-2",
+      hover:
+        "group-hover:rotate-[18deg] group-hover:translate-x-4 group-hover:-translate-y-0.5",
+    },
+    {
+      icon: first,
+      base: "rotate-0",
+      hover:
+        "group-hover:-translate-y-1 group-hover:scale-[1.12] group-hover:ring-2 group-hover:ring-sky-400/80",
+    },
   ].filter((l) => l.icon)
   if (layers.length === 0) {
     return <Files className="size-7 text-neutral-300" strokeWidth={1.5} />
@@ -39,7 +58,7 @@ function StackFan({ paths }: { paths: string[] }) {
           src={`data:image/png;base64,${l.icon}`}
           alt=""
           draggable={false}
-          className={`absolute inset-0 m-auto max-h-[40px] max-w-[40px] rounded-[3px] border-2 border-white bg-white object-contain shadow-sm ${l.className}`}
+          className={`absolute inset-0 m-auto max-h-[40px] max-w-[40px] rounded-[3px] border-2 border-white bg-white object-contain shadow-sm transition-transform duration-150 ease-out ${l.base} ${l.hover}`}
         />
       ))}
     </div>
@@ -89,6 +108,9 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
           onMouseUp={() => {
             dragStart.current = null
           }}
+          onDoubleClick={() => {
+            if (isFiles) backend.quickLook(item.paths ?? [])
+          }}
           className="group relative flex w-[64px] cursor-grab flex-col items-center gap-1 rounded-lg p-1.5 hover:bg-white/[0.08]"
         >
           <div className="relative flex size-[52px] items-center justify-center">
@@ -107,6 +129,11 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
             {item.locked && (
               <span className="absolute -bottom-0.5 -right-0.5 z-10 rounded-full bg-neutral-700 p-0.5">
                 <Lock className="size-2.5 text-amber-400" />
+              </span>
+            )}
+            {count > 1 && (
+              <span className="pointer-events-none absolute -right-1.5 -top-1.5 z-20 min-w-[17px] rounded-full bg-sky-500 px-1 text-center text-[9px] font-semibold leading-[17px] text-white shadow-sm ring-1 ring-white/70">
+                {count}
               </span>
             )}
           </div>

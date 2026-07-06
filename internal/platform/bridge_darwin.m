@@ -186,11 +186,19 @@ char *dz_clipboard_file_paths(void) {
 
 @implementation DZStatusView
 
-- (void)mouseUp:(NSEvent *)event {
+- (void)mouseDown:(NSEvent *)event {
+    // Own the whole click here (never call super) so the status button's cell
+    // doesn't start its own tracking loop and swallow the event, which would
+    // stop the grid from toggling. Toggling on mouse-down matches standard
+    // menu-bar panel behaviour; Control-click opens the menu like any item.
+    if (event.modifierFlags & NSEventModifierFlagControl) {
+        [self rightMouseDown:event];
+        return;
+    }
     dz_toggle_grid();
 }
 
-- (void)rightMouseUp:(NSEvent *)event {
+- (void)rightMouseDown:(NSEvent *)event {
     NSMenu *menu = [[NSMenu alloc] init];
     NSMenuItem *settings = [menu addItemWithTitle:@"Settings…"
                                            action:@selector(openSettings:)
@@ -338,6 +346,30 @@ static char *pngBase64FromImage(NSImage *image, int size) {
     return strdup([png base64EncodedStringWithOptions:0].UTF8String);
 }
 
+// pngBase64FromCGImage encodes a CGImage to a base64 PNG using ImageIO. Unlike
+// pngBase64FromImage it needs no drawing context (-lockFocus), so it is safe to
+// call off the main thread — important because QuickLook delivers thumbnails on
+// an arbitrary queue and several stack thumbnails are generated concurrently.
+// Returns a malloc'd string or NULL. Caller frees.
+static char *pngBase64FromCGImage(CGImageRef cg) {
+    if (cg == NULL) {
+        return NULL;
+    }
+    NSMutableData *data = [NSMutableData data];
+    CGImageDestinationRef dest = CGImageDestinationCreateWithData(
+        (__bridge CFMutableDataRef)data, CFSTR("public.png"), 1, NULL);
+    if (dest == NULL) {
+        return NULL;
+    }
+    CGImageDestinationAddImage(dest, cg, NULL);
+    bool ok = CGImageDestinationFinalize(dest);
+    CFRelease(dest);
+    if (!ok) {
+        return NULL;
+    }
+    return strdup([data base64EncodedStringWithOptions:0].UTF8String);
+}
+
 char *dz_file_thumbnail_png_base64(const char *cpath, int size) {
     if (@available(macOS 10.15, *)) {
         NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:cpath]];
@@ -352,7 +384,7 @@ char *dz_file_thumbnail_png_base64(const char *cpath, int size) {
             generateBestRepresentationForRequest:req
                                completionHandler:^(QLThumbnailRepresentation *thumb, NSError *error) {
                                    if (thumb != nil) {
-                                       result = pngBase64FromImage(thumb.NSImage, size);
+                                       result = pngBase64FromCGImage(thumb.CGImage);
                                    }
                                    dispatch_semaphore_signal(sem);
                                }];

@@ -20,6 +20,7 @@ interface TargetTileProps {
   optionHeld: boolean
   onClick: () => void
   onEdit: () => void
+  onDuplicate: () => void
   onRemove: () => void
   onDropBarItemDrop: (itemId: string) => void
   onTextDrop: (text: string, isUrl: boolean) => void
@@ -33,6 +34,7 @@ export function TargetTile({
   optionHeld,
   onClick,
   onEdit,
+  onDuplicate,
   onRemove,
   onDropBarItemDrop,
   onTextDrop,
@@ -55,9 +57,18 @@ export function TargetTile({
           className={cn(
             "group relative flex w-[76px] flex-col items-center gap-1.5 rounded-xl p-2 outline-none",
             "transition-transform duration-100",
-            hover && "scale-105"
+            hover && !optionHeld && "scale-105",
+            // Delete mode jiggles the tiles, like Dropzone / iOS edit mode.
+            optionHeld && "animate-[dz-jiggle_0.32s_ease-in-out_infinite]"
           )}
-          style={{ "--wails-drop-target": "drop" } as React.CSSProperties}
+          style={
+            {
+              "--wails-drop-target": "drop",
+              ...(optionHeld
+                ? { animationDelay: `${(target.position % 4) * 45}ms` }
+                : {}),
+            } as React.CSSProperties
+          }
           onClick={onClick}
           onDragOver={(e) => {
             e.preventDefault()
@@ -135,6 +146,7 @@ export function TargetTile({
       </ContextMenuTrigger>
       <ContextMenuContent>
         <ContextMenuItem onClick={onEdit}>Edit…</ContextMenuItem>
+        <ContextMenuItem onClick={onDuplicate}>Duplicate</ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem variant="destructive" onClick={onRemove}>
           Remove from Grid

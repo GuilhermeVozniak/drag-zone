@@ -39,6 +39,22 @@ func (a *App) UpdateTarget(t model.Target) error {
 	return nil
 }
 
+// DuplicateTarget adds a copy of an existing target to the grid, like
+// Dropzone's tile "Duplicate" command. The copy gets a fresh ID and its own
+// position; the single-key shortcut is deliberately not carried over so two
+// tiles never claim the same key.
+func (a *App) DuplicateTarget(id string) (model.Target, error) {
+	src, err := a.grid.Get(id)
+	if err != nil {
+		return model.Target{}, err
+	}
+	opts := make(map[string]string, len(src.Options))
+	for k, v := range src.Options {
+		opts[k] = v
+	}
+	return a.AddTarget(src.ActionID, src.Label, opts)
+}
+
 func (a *App) RemoveTarget(id string) error {
 	if err := a.grid.Remove(id); err != nil {
 		return err

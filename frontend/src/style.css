@@ -92,6 +92,18 @@
   --panel-bg: rgb(48 48 48);
 }
 
+/* Delete-mode jiggle for grid tiles while Option is held, echoing Dropzone's
+   (and iOS's) icon-edit wobble. Tiles stagger via per-tile animation-delay. */
+@keyframes dz-jiggle {
+  0%,
+  100% {
+    transform: rotate(-1.15deg);
+  }
+  50% {
+    transform: rotate(1.15deg);
+  }
+}
+
 /* Light-mode overrides for the hand-built dark surfaces. The app was
    designed dark-first (like Dropzone); these remap the hardcoded dark
    utilities when "Always use dark mode" is off and the OS is light. */

@@ -12,8 +12,11 @@ import { useTargetShortcuts } from "@/hooks/useTargetShortcuts"
 import {
   ChevronsDown,
   ChevronsUp,
+  CircleHelp,
   Copy,
+  Download,
   FolderCog,
+  Info,
   Plus,
   Power,
   Settings as SettingsIcon,
@@ -32,6 +35,7 @@ import { TopSection } from "@/features/dropbar/TopSection"
 import { TaskList } from "@/features/tasks/TaskList"
 import { AddTargetDialog } from "./AddTargetDialog"
 import { TargetTile } from "./TargetTile"
+import { clickBehavior } from "./clickBehavior"
 
 const FOLDER_APP_ACTIONS = new Set(["folder", "open-app"])
 
@@ -91,6 +95,25 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
     setAddOpen(true)
   }
 
+  const openConfig = (t: Target) => {
+    setEditing(t)
+    setAddOpen(true)
+  }
+
+  // Clicking a tile runs the action's click handler, opens its config, or does
+  // nothing, per clickBehavior() (see its tests for the exact rules).
+  const handleClick = (t: Target) => {
+    switch (clickBehavior(specFor(t))) {
+      case "config":
+        openConfig(t)
+        break
+      case "run":
+        backend.click(t.id)
+        break
+      // "none": drag-only action with nothing to configure.
+    }
+  }
+
   useNativeFileDrop()
   useTargetShortcuts(targets)
 
@@ -123,11 +146,9 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
           spec={specFor(t)}
           showKeyOverlay={settings?.showKeyOverlays ?? true}
           optionHeld={optionHeld}
-          onClick={() => backend.click(t.id)}
-          onEdit={() => {
-            setEditing(t)
-            setAddOpen(true)
-          }}
+          onClick={() => handleClick(t)}
+          onEdit={() => openConfig(t)}
+          onDuplicate={() => backend.grid.duplicate(t.id)}
           onRemove={() => backend.grid.remove(t.id)}
           onDropBarItemDrop={(itemId) => dropBarItemOnTarget(t.id, itemId)}
           onTextDrop={(text, isUrl) =>
@@ -163,6 +184,9 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onOpenSettings}>
+                <Download className="size-3.5" /> Get More Actions…
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onOpenSettings}>
                 <Wrench className="size-3.5" /> Develop Action…
               </DropdownMenuItem>
@@ -203,6 +227,16 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => backend.actions.openFolder()}>
                 <FolderCog className="size-3.5" /> Open Add-on Actions Folder
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  backend.openURL("https://github.com/GuilhermeVozniak/drag-zone")
+                }
+              >
+                <CircleHelp className="size-3.5" /> Help
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => backend.window.about()}>
+                <Info className="size-3.5" /> About DragZone
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

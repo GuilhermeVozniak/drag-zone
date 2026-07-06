@@ -7,13 +7,20 @@ import { PanelChrome } from "@/components/PanelChrome"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { PopoutBar } from "@/features/dropbar/PopoutBar"
 import { GridPanel } from "@/features/grid/GridPanel"
+import { Onboarding } from "@/features/onboarding/Onboarding"
 import { SettingsDialog } from "@/features/settings/SettingsDialog"
 import { InputRequestDialog } from "@/features/tasks/InputRequestDialog"
 
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [poppedOut, setPoppedOut] = useState(false)
-  const [settings] = useSettings()
+  const [settings, setSettings] = useSettings()
+
+  // Show the first-run carousel until the user finishes or skips it.
+  const showOnboarding = settings != null && !settings.onboardingSeen && !poppedOut
+  const dismissOnboarding = () => {
+    if (settings) setSettings({ ...settings, onboardingSeen: true })
+  }
 
   // Theme: "Always use dark mode" forces dark; otherwise follow the OS.
   // The class lives on <html> so portaled menus/dialogs inherit it.
@@ -53,7 +60,9 @@ function App() {
       <ErrorBoundary>
         <TooltipProvider delayDuration={400}>
           <PanelChrome>
-            {poppedOut ? (
+            {showOnboarding ? (
+              <Onboarding onDone={dismissOnboarding} />
+            ) : poppedOut ? (
               <PopoutBar />
             ) : (
               <GridPanel onOpenSettings={() => setSettingsOpen(true)} />

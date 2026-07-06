@@ -33,11 +33,10 @@ binary strings) plus user-provided screenshots. Tags: [C]onfirmed /
   collapsed). Center: "Recently Shared ▾" bordered pill (only once shares
   exist) listing recent upload URLs. Right: pop-out-Drop-Bar (overlapping
   rectangles) | separator | gear.
-- [C] △ '+' opens a menu of built-in actions (icons + names), ending with
-  "Get More Actions…" and Option-revealed "Develop Action…". DragZone shows
-  all actions plus a visible Develop entry; Get More → Settings Add-ons tab.
-- [C] △ Gear opens a menu: Settings… (⌘,), Action Console (⇧⌘D, hidden),
-  Help, About, Quit. DragZone: Settings…, Open Add-on Actions Folder, Quit.
+- [C] ✓ '+' opens a menu of built-in actions (icons + names), ending with
+  "Get More Actions…" (→ Settings Add-ons tab) and "Develop Action…".
+- [C] ✓ Gear opens a menu: Settings…, Open Add-on Actions Folder, Help,
+  About DragZone, Quit (no hidden Action Console).
 
 ## Top section (Drop Bar row)
 - [C] ✓ Persistent dashed rounded-square tiles: "Add to Grid" (+ glyph) and
@@ -69,12 +68,12 @@ binary strings) plus user-provided screenshots. Tags: [C]onfirmed /
   bottom-right; move mode shows none.
 - [C] ✓ Drag-hover darkens the hovered tile's icon itself (like Finder);
   no background ring.
-- [C] ✓ Hold Option → X delete badges on tiles (real: top-left gray square
-  w/ white X; jiggle exists behind a default). Right-click menu has Edit /
-  Duplicate and Modify / Remove (DragZone: Edit… / Remove). △
+- [C] ✓ Hold Option → X delete badges on tiles with a jiggle wobble (real:
+  top-left gray square w/ white X). Right-click menu: Edit… / Duplicate /
+  Remove.
 - [C] ✓ Drag to reorder tiles. Click behavior: folder opens, app launches,
-  action runs click handler or opens config when it has none. △ (DragZone
-  errors instead of opening config for handler-less actions.)
+  action runs its click handler, or opens config when it declares no click
+  event (drag-only actions with no options do nothing).
 - [C] ✓ F3 opens grid with single-key overlays on tiles (dark rounded badge,
   white letter, ServiceKeyOverlays toggle); pressing the key runs it.
 - [C] ✗ KeyModifiers overlay (⌘ glyph over action while dragging with a
@@ -101,9 +100,13 @@ binary strings) plus user-provided screenshots. Tags: [C]onfirmed /
 ## Appearance
 - [C] ✓ Full light + dark themes; "Always use dark mode" override; branded
   icons stay colored in both.
-- [C] ✗ First-run 6-slide onboarding carousel.
+- [C] ✓ First-run onboarding carousel (5 slides, dot nav, Skip / Get
+  Started; dismissal persisted in settings.onboardingSeen).
 
 ## Known intentional deviations
 Single Wails window (pop-out bar replaces the window content instead of a
-second window; settings are a dialog, not a separate window); no jiggle
-animation; no Action Console; drag overlay opens the grid directly.
+second window; settings are a dialog, not a separate window; onboarding and
+about render in-panel / as a native dialog); no Action Console; drag overlay
+opens the grid directly rather than first showing the small app-icon tab.
+Still open: KeyModifiers (⌘-glyph) drag overlay; Replace/Stop conflict
+dialog (auto "Keep Both"); scroll affordance for very many Drop Bar items.

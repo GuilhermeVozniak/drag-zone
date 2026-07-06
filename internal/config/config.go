@@ -25,6 +25,7 @@ type Settings struct {
 	DropBarKeepsItems bool   `json:"dropBarKeepsItems"`
 	NotifyOnComplete  bool   `json:"notifyOnComplete"`
 	AutoUpdateCheck   bool   `json:"autoUpdateCheck"`
+	OnboardingSeen    bool   `json:"onboardingSeen"` // first-run carousel dismissed
 }
 
 // Defaults returns the settings used on first launch.
