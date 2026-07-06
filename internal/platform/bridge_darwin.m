@@ -2,6 +2,7 @@
 #import <Carbon/Carbon.h>
 #import <ImageIO/ImageIO.h>
 #import <QuickLookThumbnailing/QuickLookThumbnailing.h>
+#import <QuartzCore/QuartzCore.h>
 #import <ServiceManagement/ServiceManagement.h>
 #include "bridge_darwin.h"
 
@@ -20,6 +21,7 @@ static EventHotKeyRef hotKeyRefs[3] = {NULL, NULL, NULL};
 static bool shownForDrag = false;
 static bool pinnedMode = false;
 static bool dragOverlayEnabled = true;
+static NSWindow *dragTab = nil;
 
 void dz_set_drag_overlay_enabled(bool enabled) {
     dragOverlayEnabled = enabled;
@@ -74,11 +76,74 @@ static char *jsonFromURLs(NSArray<NSURL *> *urls) {
     return strdup(s.UTF8String);
 }
 
+// --- Drag-reveal tab ----------------------------------------------------
+//
+// While a file drag nears the menu bar, Dropzone shows a small tab with the
+// app icon just below the status item; dragging onto it (or up to the icon)
+// expands the full grid. positionDragTab/show/hide run on the main thread
+// (the global drag monitor delivers there).
+
+static void positionDragTab(void) {
+    if (statusItem == nil || statusItem.button.window == nil || dragTab == nil) {
+        return;
+    }
+    NSRect anchor = statusItem.button.window.frame;
+    NSRect f = dragTab.frame;
+    [dragTab setFrameOrigin:NSMakePoint(NSMidX(anchor) - f.size.width / 2.0,
+                                        NSMinY(anchor) - f.size.height - 2)];
+}
+
+static void ensureDragTab(void) {
+    if (dragTab != nil) {
+        return;
+    }
+    NSRect frame = NSMakeRect(0, 0, 48, 34);
+    dragTab = [[NSPanel alloc]
+        initWithContentRect:frame
+                  styleMask:NSWindowStyleMaskBorderless | NSWindowStyleMaskNonactivatingPanel
+                    backing:NSBackingStoreBuffered
+                      defer:NO];
+    dragTab.opaque = NO;
+    dragTab.backgroundColor = NSColor.clearColor;
+    dragTab.level = NSPopUpMenuWindowLevel;
+    dragTab.ignoresMouseEvents = YES;
+    dragTab.hasShadow = YES;
+    dragTab.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
+                                 NSWindowCollectionBehaviorFullScreenAuxiliary;
+
+    NSVisualEffectView *fx = [[NSVisualEffectView alloc] initWithFrame:frame];
+    fx.material = NSVisualEffectMaterialMenu;
+    fx.state = NSVisualEffectStateActive;
+    fx.wantsLayer = YES;
+    fx.layer.cornerRadius = 8;
+    fx.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+    NSImageView *icon = [NSImageView imageViewWithImage:NSApp.applicationIconImage];
+    icon.frame = NSMakeRect((frame.size.width - 24) / 2.0,
+                            (frame.size.height - 24) / 2.0, 24, 24);
+    icon.imageScaling = NSImageScaleProportionallyUpOrDown;
+    [fx addSubview:icon];
+    dragTab.contentView = fx;
+}
+
+static void showDragTab(void) {
+    ensureDragTab();
+    positionDragTab();
+    [dragTab orderFront:nil];
+}
+
+static void hideDragTab(void) {
+    if (dragTab != nil) {
+        [dragTab orderOut:nil];
+    }
+}
+
 static void showGridInternal(bool activate) {
     NSWindow *win = findGridWindow();
     if (win == nil) {
         return;
     }
+    hideDragTab();
     NSRect anchor;
     NSScreen *screen;
     if (statusItem != nil && statusItem.button.window != nil) {
@@ -562,10 +627,33 @@ void dz_init(const char *windowTitle) {
             if ([pb availableTypeFromArray:@[ NSPasteboardTypeFileURL ]] == nil) {
                 return;
             }
-            NSScreen *screen = statusItem.button.window.screen ?: NSScreen.mainScreen;
-            if (NSEvent.mouseLocation.y >= NSMaxY(screen.frame) - 40 && !dz_grid_visible()) {
-                shownForDrag = true;
-                dz_show_grid(false);
+            if (statusItem == nil || statusItem.button.window == nil || dz_grid_visible()) {
+                return;
+            }
+            NSRect anchor = statusItem.button.window.frame;
+            NSPoint mouse = NSEvent.mouseLocation;
+            CGFloat dx = fabs(mouse.x - NSMidX(anchor));
+
+            // Reveal the small tab once the drag reaches the menu bar near the
+            // icon; it appears just below the status item.
+            if (mouse.y >= NSMinY(anchor) && dx < 90) {
+                if (!shownForDrag) {
+                    shownForDrag = true;
+                    showDragTab();
+                }
+                return;
+            }
+            // Once shown, dragging down onto the tab expands the full grid;
+            // dragging well away retracts it.
+            if (shownForDrag) {
+                ensureDragTab();
+                positionDragTab();
+                if (NSPointInRect(mouse, NSInsetRect(dragTab.frame, -16, -10))) {
+                    dz_show_grid(false); // showGridInternal hides the tab
+                } else if (NSMinY(anchor) - mouse.y > 120 || dx > 140) {
+                    shownForDrag = false;
+                    hideDragTab();
+                }
             }
         }];
         [NSEvent addGlobalMonitorForEventsMatchingMask:NSEventMaskLeftMouseUp
@@ -574,6 +662,7 @@ void dz_init(const char *windowTitle) {
                 return;
             }
             shownForDrag = false;
+            hideDragTab();
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)),
                            dispatch_get_main_queue(), ^{
                 NSWindow *win = findGridWindow();

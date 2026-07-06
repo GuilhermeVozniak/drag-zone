@@ -115,7 +115,12 @@ export const events = {
   onDropBarPopOut: (fn: (popped: boolean) => void) =>
     EventsOn("dropbar:popout", fn),
   onInputRequest: (
-    fn: (req: { id: string; title: string; prompt: string }) => void
+    fn: (req: {
+      id: string
+      title: string
+      prompt: string
+      choices?: string[]
+    }) => void
   ) => EventsOn("input:request", fn),
   onWindowVisibility: (fn: (visible: boolean) => void) =>
     EventsOn("window:visibility", fn),

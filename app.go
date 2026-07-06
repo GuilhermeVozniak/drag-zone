@@ -181,6 +181,7 @@ func NewApp(services actions.Services) (*App, error) {
 		SaveTargetOption: a.saveTargetOption,
 		OnTask:           a.taskFeedback,
 		OnResultURL:      a.addRecentShare,
+		Prompt:           a.requestChoice,
 	})
 	if err := storage.Load(recentsFile, &a.recentShares); err == nil && a.recentShares == nil {
 		a.recentShares = []Share{}

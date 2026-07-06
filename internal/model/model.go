@@ -66,6 +66,10 @@ type ActionSpec struct {
 	Accepts     []ItemKind    `json:"accepts"` // payload kinds accepted for dragged
 	Options     []OptionField `json:"options,omitempty"`
 	Multi       bool          `json:"multi"` // may be placed in the grid more than once
+	// KeyModifier names a modifier ("option", "command", "shift", "control")
+	// whose glyph is hinted over the tile while dragging, when holding it on
+	// drop changes the action's behavior. Empty for actions with no modifier.
+	KeyModifier string `json:"keyModifier,omitempty"`
 }
 
 // Target is an action instance placed in the user's grid.

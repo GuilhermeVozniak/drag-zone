@@ -13,6 +13,17 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
 
+// Glyphs for the KeyModifier hint shown over a tile while dragging onto it.
+const MODIFIER_GLYPH: Record<string, string> = {
+  command: "⌘",
+  cmd: "⌘",
+  option: "⌥",
+  alt: "⌥",
+  shift: "⇧",
+  control: "⌃",
+  ctrl: "⌃",
+}
+
 interface TargetTileProps {
   target: Target
   spec: ActionSpec | undefined
@@ -119,6 +130,14 @@ export function TargetTile({
           <span className="line-clamp-2 w-full text-center text-[11px] leading-tight text-neutral-300">
             {target.label}
           </span>
+          {hover && spec?.keyModifier && MODIFIER_GLYPH[spec.keyModifier] && (
+            <span
+              className="absolute right-1 top-1 z-10 flex size-5 items-center justify-center rounded-md bg-black/70 text-[12px] font-semibold text-white shadow"
+              title="Hold to change behavior on drop"
+            >
+              {MODIFIER_GLYPH[spec.keyModifier]}
+            </span>
+          )}
           {target.shortcut && showKeyOverlay && (
             <span className="absolute left-1/2 top-5 z-10 -translate-x-1/2 rounded-md bg-black/60 px-1.5 py-0.5 font-mono text-[12px] font-semibold text-white">
               {target.shortcut.toUpperCase()}

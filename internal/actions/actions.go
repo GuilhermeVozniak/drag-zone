@@ -41,6 +41,11 @@ type Invocation struct {
 	// e.g. OAuth refresh tokens. May be nil when the host provides no
 	// persistence.
 	SaveOption func(key, value string)
+	// Prompt asks the user to choose among options mid-run (e.g. resolving a
+	// file conflict), returning the chosen option and whether the user
+	// answered (false on cancel/timeout). Nil when the host provides no UI
+	// (e.g. CLI runs); actions must fall back to a safe default when it is nil.
+	Prompt func(title, message string, choices []string) (choice string, ok bool)
 }
 
 // Result is what an action produced, used for grid status and notifications.

@@ -51,9 +51,29 @@ func (a *App) bundleHost() bundles.Host {
 	}
 }
 
-// requestInput shows an input dialog in the grid and blocks the calling
-// script until the user answers or the timeout passes.
+// inputRequest is the payload sent to the frontend for a dz.inputbox text
+// prompt or a choice prompt (e.g. file-conflict resolution). When Choices is
+// set the frontend renders buttons instead of a text field.
+type inputRequest struct {
+	ID      string   `json:"id"`
+	Title   string   `json:"title"`
+	Prompt  string   `json:"prompt"`
+	Choices []string `json:"choices,omitempty"`
+}
+
+// requestInput shows a text-input dialog and blocks the caller (a running
+// action script) until the user answers or the timeout passes.
 func (a *App) requestInput(title, prompt string) (string, bool) {
+	return a.promptUser(title, prompt, nil)
+}
+
+// requestChoice shows a button dialog and returns the chosen label; it backs
+// Invocation.Prompt so built-in actions can resolve file conflicts.
+func (a *App) requestChoice(title, message string, choices []string) (string, bool) {
+	return a.promptUser(title, message, choices)
+}
+
+func (a *App) promptUser(title, prompt string, choices []string) (string, bool) {
 	id := uuid.NewString()
 	ch := make(chan inputAnswer, 1)
 	a.inputMu.Lock()
@@ -66,7 +86,7 @@ func (a *App) requestInput(title, prompt string) (string, bool) {
 	}()
 
 	platform.ShowGrid(true)
-	a.emit(EventInputRequest, map[string]string{"id": id, "title": title, "prompt": prompt})
+	a.emit(EventInputRequest, inputRequest{ID: id, Title: title, Prompt: prompt, Choices: choices})
 
 	select {
 	case ans := <-ch:

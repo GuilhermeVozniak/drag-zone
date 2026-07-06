@@ -45,24 +45,36 @@ func UniqueDest(dir, name string) string {
 	}
 }
 
-// CopyPath copies the file or directory src into dstDir, reporting copied
-// bytes via onBytes (may be nil). It returns the destination path.
+// CopyPath copies src into dstDir under a non-colliding name (see UniqueDest),
+// reporting copied bytes via onBytes (may be nil). It returns the destination.
 func CopyPath(src, dstDir string, onBytes func(int64)) (string, error) {
+	return CopyPathAs(src, UniqueDest(dstDir, filepath.Base(src)), onBytes)
+}
+
+// CopyPathAs copies the file or directory src to the exact path dst. Callers
+// that must not overwrite should use CopyPath; "Replace" conflict resolution
+// uses this to write over an already-removed destination.
+func CopyPathAs(src, dst string, onBytes func(int64)) (string, error) {
 	info, err := os.Lstat(src)
 	if err != nil {
 		return "", err
 	}
-	dst := UniqueDest(dstDir, filepath.Base(src))
 	if err := copyAny(src, dst, info, onBytes); err != nil {
 		return "", err
 	}
 	return dst, nil
 }
 
-// MovePath moves the file or directory src into dstDir, preferring rename and
-// falling back to copy+delete across volumes. It returns the destination path.
+// MovePath moves src into dstDir under a non-colliding name and returns the
+// destination path.
 func MovePath(src, dstDir string, onBytes func(int64)) (string, error) {
-	dst := UniqueDest(dstDir, filepath.Base(src))
+	return MovePathAs(src, UniqueDest(dstDir, filepath.Base(src)), onBytes)
+}
+
+// MovePathAs moves src to the exact path dst, preferring rename and falling
+// back to copy+delete across volumes. dst must not already exist (rename will
+// not replace a non-empty directory); "Replace" callers remove it first.
+func MovePathAs(src, dst string, onBytes func(int64)) (string, error) {
 	if err := os.Rename(src, dst); err == nil {
 		if onBytes != nil {
 			onBytes(TotalSize([]string{dst}))

@@ -56,7 +56,7 @@ export function TopSection({ items, showAddToGrid = true, onAddClick }: TopSecti
         <div
           data-drop-id="dropbar"
           style={{ "--wails-drop-target": "drop" } as React.CSSProperties}
-          className="flex flex-wrap items-start gap-1 px-3 py-2"
+          className="flex max-h-[184px] flex-wrap items-start gap-1 overflow-y-auto px-3 py-2"
         >
           {showAddToGrid && (
             <DashedTile dropId="add-to-grid" label="Add to Grid" onClick={onAddClick}>

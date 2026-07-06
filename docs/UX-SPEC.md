@@ -20,10 +20,9 @@ binary strings) plus user-provided screenshots. Tags: [C]onfirmed /
   (~96.5% alpha), dark #303030 (~97%). ~10pt corner radius.
 - [C] ✓ Opens by status-item click, drag near the menu bar, or the grid
   hotkey (default F3); Escape closes; animates open/close (toggleable).
-- [C] △ Drag-initiated reveal: real app first shows a small overlay tab with
-  the app icon below the status item, expanding to the grid when the drag
-  reaches it. DragZone opens the grid directly when the drag nears the menu
-  bar (toggleable, "Show drag target overlay").
+- [C] ✓ Drag-initiated reveal: a small app-icon tab appears below the status
+  item as a file drag nears the menu bar and expands to the grid when the
+  drag reaches it (toggleable, "Show drag target overlay").
 - [L] ✓ Grid hides right after a drop on an action; the task continues with
   progress in the menu bar icon and a notification.
 
@@ -51,8 +50,8 @@ binary strings) plus user-provided screenshots. Tags: [C]onfirmed /
 - [C] ✓ Cmd-V pastes clipboard files/text into Drop Bar.
 - [C] ✓ Drag-out removes the item unless locked (Option keeps it — DragZone
   uses lock + global setting instead of the Option modifier). △
-- [C] ✓ Items wrap onto extra rows. [L] Real app scrolls with chevron
-  affordance for very many items — DragZone wraps only. △
+- [C] ✓ Items wrap onto extra rows and scroll vertically once they overflow
+  (~2 rows), keeping the rest of the grid usable.
 - [C] ✓ Pop-out floating Drop Bar via toolbar button (real: separate small
   window w/ close X; DragZone: same window switches to a compact pinned
   strip — single-window constraint). △ Separate F4-style hotkey ✓.
@@ -76,8 +75,14 @@ binary strings) plus user-provided screenshots. Tags: [C]onfirmed /
   event (drag-only actions with no options do nothing).
 - [C] ✓ F3 opens grid with single-key overlays on tiles (dark rounded badge,
   white letter, ServiceKeyOverlays toggle); pressing the key runs it.
-- [C] ✗ KeyModifiers overlay (⌘ glyph over action while dragging with a
-  declared modifier).
+- [C] ✓ KeyModifiers overlay: a modifier glyph (⌥/⌘/⇧/⌃) is shown over a
+  tile while a drag hovers it when the action declares one (Folder shows ⌥,
+  which inverts copy/move on drop).
+
+## Conflicts
+- [C] ✓ Dropping a file whose name already exists in a Folder target prompts
+  Keep Both / Replace / Stop (built-in actions can now prompt the user via
+  Invocation.Prompt). CLI/no-UI runs fall back to the safe Keep Both.
 
 ## Tasks
 - [C] ✓ "TASK PROGRESS" section at panel bottom: action icon + status label
@@ -106,7 +111,7 @@ binary strings) plus user-provided screenshots. Tags: [C]onfirmed /
 ## Known intentional deviations
 Single Wails window (pop-out bar replaces the window content instead of a
 second window; settings are a dialog, not a separate window; onboarding and
-about render in-panel / as a native dialog); no Action Console; drag overlay
-opens the grid directly rather than first showing the small app-icon tab.
-Still open: KeyModifiers (⌘-glyph) drag overlay; Replace/Stop conflict
-dialog (auto "Keep Both"); scroll affordance for very many Drop Bar items.
+about render in-panel / as a native dialog); no Action Console. The
+file-conflict prompt resolves each conflict individually (no "apply to all"
+checkbox). The drag-reveal tab's thresholds are hand-tuned and want a real
+drag to confirm feel.

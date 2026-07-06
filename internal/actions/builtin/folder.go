@@ -26,6 +26,7 @@ func (Folder) Spec() model.ActionSpec {
 		Events:      []string{model.EventDragged, model.EventClicked},
 		Accepts:     []model.ItemKind{model.ItemFiles, model.ItemText, model.ItemURL},
 		Multi:       true,
+		KeyModifier: "option", // hold ⌥ on drop to invert copy/move
 		Options: []model.OptionField{
 			{Key: "path", Label: "Folder", Type: "folder", Required: true},
 			{Key: "mode", Label: "On drop", Type: "select", Choices: []string{"copy", "move"}, Default: "copy"},
@@ -65,15 +66,37 @@ func (Folder) Dropped(_ context.Context, inv actions.Invocation) (actions.Result
 	}
 
 	for _, src := range inv.Payload.Paths {
-		inv.Progress.Detail(filepath.Base(src))
+		name := filepath.Base(src)
+		inv.Progress.Detail(name)
+		dst := filepath.Join(dir, name)
+
+		resolution := "keep-both"
+		if _, err := os.Lstat(dst); err == nil {
+			resolution = resolveConflict(inv, name)
+		}
+
 		var err error
-		if mode == "move" {
-			_, err = fsutil.MovePath(src, dir, onBytes)
-		} else {
-			_, err = fsutil.CopyPath(src, dir, onBytes)
+		switch resolution {
+		case "stop":
+			return actions.Result{}, fmt.Errorf("stopped: %q already exists", name)
+		case "replace":
+			if err = os.RemoveAll(dst); err != nil {
+				return actions.Result{}, fmt.Errorf("replace %s: %w", name, err)
+			}
+			if mode == "move" {
+				_, err = fsutil.MovePathAs(src, dst, onBytes)
+			} else {
+				_, err = fsutil.CopyPathAs(src, dst, onBytes)
+			}
+		default: // keep-both, also the safe fallback when there is no UI
+			if mode == "move" {
+				_, err = fsutil.MovePath(src, dir, onBytes)
+			} else {
+				_, err = fsutil.CopyPath(src, dir, onBytes)
+			}
 		}
 		if err != nil {
-			return actions.Result{}, fmt.Errorf("%s %s: %w", mode, filepath.Base(src), err)
+			return actions.Result{}, fmt.Errorf("%s %s: %w", mode, name, err)
 		}
 	}
 
@@ -82,6 +105,31 @@ func (Folder) Dropped(_ context.Context, inv actions.Invocation) (actions.Result
 		verb = "Moved"
 	}
 	return actions.Result{Message: fmt.Sprintf("%s %d item(s) to %s", verb, len(inv.Payload.Paths), filepath.Base(dir))}, nil
+}
+
+// resolveConflict asks the user how to handle an existing destination named
+// name. Without a prompt (e.g. CLI runs) it keeps both — the non-destructive
+// default. Returns "keep-both", "replace", or "stop".
+func resolveConflict(inv actions.Invocation, name string) string {
+	if inv.Prompt == nil {
+		return "keep-both"
+	}
+	choice, ok := inv.Prompt(
+		"Item Already Exists",
+		fmt.Sprintf("An item named “%s” already exists here.", name),
+		[]string{"Keep Both", "Replace", "Stop"},
+	)
+	if !ok {
+		return "keep-both"
+	}
+	switch choice {
+	case "Replace":
+		return "replace"
+	case "Stop":
+		return "stop"
+	default:
+		return "keep-both"
+	}
 }
 
 func saveTextClipping(dir string, p model.Payload) (actions.Result, error) {
