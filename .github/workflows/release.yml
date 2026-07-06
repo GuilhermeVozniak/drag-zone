@@ -14,7 +14,9 @@ permissions:
 jobs:
   release:
     name: Build, sign, notarize
-    runs-on: macos-14
+    # macos-latest, like option-tab: older images (macos-14) lack Apple's
+    # Developer ID intermediate CA, leaving the imported identity "invalid".
+    runs-on: macos-latest
     env:
       # secrets are not readable in step-level `if:`; surface presence here.
       HAS_MACOS_SIGNING: ${{ secrets.MACOS_CERT_P12 != '' }}
@@ -72,6 +74,11 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          # Keychain Access p12 exports hold only the leaf cert + key; import
+          # Apple's Developer ID G2 intermediate too so the chain validates
+          # regardless of what the runner image preinstalls.
+          curl -sSLo "$RUNNER_TEMP/DeveloperIDG2CA.cer" https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN"
           security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security list-keychains -d user -s "$KEYCHAIN" login.keychain
