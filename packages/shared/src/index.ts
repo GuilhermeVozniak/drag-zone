@@ -2,7 +2,7 @@ export const PRODUCT = {
   name: "dragzone",
   displayName: "DragZone",
   repo: "https://github.com/GuilhermeVozniak/drag-zone",
-  site: "https://guilhermevozniak.github.io/drag-zone",
+  site: "https://drag-zone.vozniak.dev",
 } as const;
 
 // DragZone ships a single macOS universal build; the platform/arch parameters

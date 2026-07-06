@@ -1,9 +1,10 @@
 name: Deploy Web
 
-# Publishes apps/web to GitHub Pages at
-# https://guilhermevozniak.github.io/drag-zone/ on changes to the site or the
-# shared package. A custom domain would set NEXT_PUBLIC_BASE_PATH empty and add
-# a CNAME.
+# Publishes apps/web to GitHub Pages at https://drag-zone.vozniak.dev (custom
+# domain set in the repo's Pages config) on changes to the site or the shared
+# package. The custom domain serves from the root, so no basePath is set;
+# to serve under the github.io project path instead, set
+# NEXT_PUBLIC_BASE_PATH=/drag-zone on the build step.
 on:
   push:
     branches: [main]
@@ -33,8 +34,6 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Build static site
         run: cd apps/web && bun run build
-        env:
-          NEXT_PUBLIC_BASE_PATH: /drag-zone
       - uses: actions/configure-pages@v5
         with: { enablement: true }
       - uses: actions/upload-pages-artifact@v3
