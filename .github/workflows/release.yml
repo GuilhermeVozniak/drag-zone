@@ -96,15 +96,16 @@ jobs:
 
       - name: Notarize & staple
         env:
-          NOTARY_KEY_B64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
-          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
-          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          KEY_PATH="$RUNNER_TEMP/notary.p8"
-          echo "$NOTARY_KEY_B64" | base64 --decode > "$KEY_PATH"
           xcrun notarytool submit "DragZone-$VERSION.dmg" \
-            --key "$KEY_PATH" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait
+            --apple-id "$NOTARY_APPLE_ID" \
+            --password "$NOTARY_PASSWORD" \
+            --team-id "$NOTARY_TEAM_ID" \
+            --wait
           xcrun stapler staple "DragZone-$VERSION.dmg"
 
       - name: Publish GitHub Release

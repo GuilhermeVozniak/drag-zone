@@ -31,16 +31,18 @@ You need an **Apple Developer account** ($99/yr). Gather two things.
    # e.g. "Developer ID Application: Guilherme Vozniak (AB12CD34EF)"
    ```
 
-### 2. App Store Connect API key (for notarization)
+### 2. App-specific password (for notarization)
 
-1. At <https://appstoreconnect.apple.com> › Users and Access › Integrations ›
-   App Store Connect API, create a key with the **Developer** role.
-2. Download the `.p8` (one-time download) and note its **Key ID** and the
-   team's **Issuer ID**.
-3. Base64-encode the key:
-   ```sh
-   base64 -i AuthKey_XXXXXXXXXX.p8 | pbcopy
-   ```
+1. Sign in at <https://appleid.apple.com> › Sign-In and Security ›
+   App-Specific Passwords → generate one (e.g. named "notarytool"). It looks
+   like `abcd-efgh-ijkl-mnop`.
+2. Note your **Apple ID email** and your 10-character **Team ID** (the code in
+   parentheses in the signing identity from step 1, or developer.apple.com ›
+   Membership).
+
+> Alternative: an App Store Connect API key (`.p8`) also works and is what
+> Apple recommends long-term. To use it, swap the notarize step in
+> `release.yml` to `xcrun notarytool submit --key/--key-id/--issuer`.
 
 ### 3. Add the repository secrets
 
@@ -52,9 +54,9 @@ Repo › Settings › Secrets and variables › Actions → add:
 | `MACOS_CERT_PASSWORD` | the `.p12` export password |
 | `MACOS_SIGN_IDENTITY` | e.g. `Developer ID Application: Name (TEAMID)` |
 | `KEYCHAIN_PASSWORD` | any random string (temporary CI keychain) |
-| `NOTARY_KEY_P8_BASE64` | base64 of the App Store Connect `.p8` key |
-| `NOTARY_KEY_ID` | the API key's Key ID |
-| `NOTARY_ISSUER_ID` | the API key's Issuer ID (UUID) |
+| `NOTARY_APPLE_ID` | your Apple ID email |
+| `NOTARY_PASSWORD` | the app-specific password (`xxxx-xxxx-xxxx-xxxx`) |
+| `NOTARY_TEAM_ID` | your 10-character Team ID |
 
 ## Cutting a release
 
