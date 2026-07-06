@@ -51,9 +51,17 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+          # Keychain Access p12 exports hold only the leaf cert + key. Without
+          # Apple's "Developer ID Certification Authority G2" intermediate the
+          # chain can't be built and codesign reports "no identity found".
+          curl -sSLo "$RUNNER_TEMP/DeveloperIDG2CA.cer" https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN"
           security import "$CERT_PATH" -P "$CERT_PWD" -A -t cert -f pkcs12 -k "$KEYCHAIN" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" "$KEYCHAIN" > /dev/null
           security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+          # Sanity check: fail here (not at codesign) if the identity is unusable.
+          security find-identity -v -p codesigning "$KEYCHAIN" | tail -1
+          security find-identity -v -p codesigning "$KEYCHAIN" | grep -q "1 valid identities found"
 
       - name: Build app (universal)
         run: wails build -platform darwin/universal -ldflags "-X main.appVersion=${{ steps.version.outputs.version }}"
