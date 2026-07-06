@@ -1,0 +1,114 @@
+name: Release
+
+# Cut a release by pushing a version tag, e.g.:
+#   git tag v0.3.0 && git push origin v0.3.0
+# Requires the signing/notarization secrets documented in docs/RELEASE.md.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build, sign, notarize
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Derive version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Wails
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Import signing certificate
+        env:
+          CERT_B64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          CERT_PWD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          KEYCHAIN_PWD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          echo "$CERT_B64" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PWD" "$KEYCHAIN"
+          security import "$CERT_PATH" -P "$CERT_PWD" -A -t cert -f pkcs12 -k "$KEYCHAIN" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+
+      - name: Build app (universal)
+        run: wails build -platform darwin/universal -ldflags "-X main.appVersion=${{ steps.version.outputs.version }}"
+
+      - name: Bundle universal dz CLI into Resources
+        run: |
+          CGO_ENABLED=0 GOARCH=arm64 go build -o "$RUNNER_TEMP/dz-arm64" ./cmd/dz
+          CGO_ENABLED=0 GOARCH=amd64 go build -o "$RUNNER_TEMP/dz-amd64" ./cmd/dz
+          lipo -create -output build/bin/dragzone.app/Contents/Resources/dz "$RUNNER_TEMP/dz-arm64" "$RUNNER_TEMP/dz-amd64"
+
+      - name: Stamp bundle version
+        run: |
+          PLIST=build/bin/dragzone.app/Contents/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${{ steps.version.outputs.version }}" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ steps.version.outputs.version }}" "$PLIST"
+
+      - name: Code sign (hardened runtime)
+        env:
+          IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+        run: |
+          APP=build/bin/dragzone.app
+          codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP/Contents/Resources/dz"
+          codesign --force --options runtime --timestamp \
+            --entitlements build/darwin/entitlements.plist --sign "$IDENTITY" "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          VERSION="${{ steps.version.outputs.version }}"
+          # create-dmg exits non-zero when it can't style the window on a
+          # headless runner; the DMG is still produced, so guard on the file.
+          create-dmg \
+            --volname "DragZone $VERSION" \
+            --window-size 540 380 \
+            --icon "dragzone.app" 150 190 \
+            --app-drop-link 390 190 \
+            "DragZone-$VERSION.dmg" "build/bin/dragzone.app" || true
+          test -f "DragZone-$VERSION.dmg"
+
+      - name: Notarize & staple
+        env:
+          NOTARY_KEY_B64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          KEY_PATH="$RUNNER_TEMP/notary.p8"
+          echo "$NOTARY_KEY_B64" | base64 --decode > "$KEY_PATH"
+          xcrun notarytool submit "DragZone-$VERSION.dmg" \
+            --key "$KEY_PATH" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" --wait
+          xcrun stapler staple "DragZone-$VERSION.dmg"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: DragZone-*.dmg
+          generate_release_notes: true

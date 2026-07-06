@@ -18,10 +18,11 @@ var assets embed.FS
 const (
 	windowWidth  = 420
 	windowHeight = 560
-
-	// appVersion is shown in the Updates tab.
-	appVersion = "0.2.0"
 )
+
+// appVersion is shown in the Updates tab. Release builds inject the git tag
+// via -ldflags "-X main.appVersion=<version>" (see .github/workflows/release.yml).
+var appVersion = "0.2.0"
 
 func main() {
 	app, err := NewApp(platform.Services{})
