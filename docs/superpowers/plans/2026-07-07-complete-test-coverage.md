@@ -536,7 +536,7 @@ func TestClipboardCopiesTextAndPaths(t *testing.T) {
 
 func TestClipboardSurfacesServiceError(t *testing.T) {
 	svc := &recServices{ClipboardErr: errors.New("no clip")}
-	if _, err := CopyToClipboard{}.Dropped(context.Background(),
+	if _, err := (CopyToClipboard{}).Dropped(context.Background(),
 		inv(model.Payload{Kind: model.ItemText, Text: "x"}, svc)); err == nil {
 		t.Error("clipboard error should propagate")
 	}
@@ -626,14 +626,14 @@ func TestSaveTextWritesFile(t *testing.T) {
 }
 
 func TestSaveTextRejectsEmptyConfigOrText(t *testing.T) {
-	if _, err := SaveText{}.Dropped(context.Background(), actions.Invocation{
+	if _, err := (SaveText{}).Dropped(context.Background(), actions.Invocation{
 		Target:   model.Target{},
 		Payload:  model.Payload{Kind: model.ItemText, Text: "x"},
 		Progress: nullProgress{},
 	}); err == nil {
 		t.Error("missing folder should error")
 	}
-	if _, err := SaveText{}.Dropped(context.Background(), actions.Invocation{
+	if _, err := (SaveText{}).Dropped(context.Background(), actions.Invocation{
 		Target:   model.Target{Options: map[string]string{"path": t.TempDir()}},
 		Payload:  model.Payload{Kind: model.ItemText, Text: "   "},
 		Progress: nullProgress{},
@@ -864,7 +864,7 @@ func TestImgurUploadRoundTrip(t *testing.T) {
 func TestImgurRejectsNonImageAndMissingID(t *testing.T) {
 	svc := &recServices{}
 	// missing client id
-	if _, err := ImgurUpload{}.Dropped(context.Background(), actions.Invocation{
+	if _, err := (ImgurUpload{}).Dropped(context.Background(), actions.Invocation{
 		Target: model.Target{}, Payload: model.Payload{Paths: []string{"/a.png"}},
 		Progress: nullProgress{}, Services: svc,
 	}); err == nil {
@@ -873,7 +873,7 @@ func TestImgurRejectsNonImageAndMissingID(t *testing.T) {
 	// non-image file
 	txt := filepath.Join(t.TempDir(), "a.txt")
 	os.WriteFile(txt, []byte("x"), 0o644)
-	if _, err := ImgurUpload{}.Dropped(context.Background(), actions.Invocation{
+	if _, err := (ImgurUpload{}).Dropped(context.Background(), actions.Invocation{
 		Target: model.Target{Options: map[string]string{"client_id": "C"}},
 		Payload:  model.Payload{Paths: []string{txt}},
 		Progress: nullProgress{}, Services: svc,
@@ -962,7 +962,7 @@ func TestShortenRoundTripAndClickReadsClipboard(t *testing.T) {
 
 	// Clicked path reads the clipboard
 	svc2 := &recServices{ReadClip: "https://example.com/from-clip"}
-	if _, err := ShortenURL{}.Clicked(context.Background(), actions.Invocation{
+	if _, err := (ShortenURL{}).Clicked(context.Background(), actions.Invocation{
 		Progress: nullProgress{}, Services: svc2,
 	}); err != nil {
 		t.Fatalf("clicked: %v", err)
@@ -980,7 +980,7 @@ func TestShortenServerErrorPropagates(t *testing.T) {
 	old := tinyURLAPI
 	tinyURLAPI = ts.URL
 	defer func() { tinyURLAPI = old }()
-	if _, err := ShortenURL{}.Dropped(context.Background(), actions.Invocation{
+	if _, err := (ShortenURL{}).Dropped(context.Background(), actions.Invocation{
 		Payload:  model.Payload{Kind: model.ItemURL, Text: "https://a.com"},
 		Progress: nullProgress{}, Services: &recServices{},
 	}); err == nil {
