@@ -1808,10 +1808,10 @@ func capture(t *testing.T, fn func()) string {
 		t.Fatal(err)
 	}
 	orig := os.Stdout
+	defer func() { os.Stdout = orig }()
 	os.Stdout = w
 	fn()
 	w.Close()
-	os.Stdout = orig
 	out, _ := io.ReadAll(r)
 	return string(out)
 }
