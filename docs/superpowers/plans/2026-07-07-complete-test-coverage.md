@@ -294,13 +294,29 @@ package ipc
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 
 	"dragzone/internal/storage"
 )
 
+// newDataDir points storage.Dir() at a SHORT temp dir. t.TempDir() bakes the
+// (long) test name into the path; combined with the "dragzone.sock" suffix
+// that can exceed the macOS AF_UNIX sun_path limit (~104 bytes) for longer
+// test names, making net.Listen fail with "bind: invalid argument". A short
+// prefix keeps the socket path well under the limit while preserving isolation.
+func newDataDir(t *testing.T) {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "dz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	t.Setenv(storage.EnvDataDir, dir)
+}
+
 func TestServeCallRoundTrip(t *testing.T) {
-	t.Setenv(storage.EnvDataDir, t.TempDir())
+	newDataDir(t)
 	srv, err := Serve(func(req Request) (any, error) {
 		if req.Cmd != "echo" {
 			return nil, fmt.Errorf("unknown %q", req.Cmd)
@@ -329,7 +345,7 @@ func TestServeCallRoundTrip(t *testing.T) {
 }
 
 func TestCallPropagatesHandlerError(t *testing.T) {
-	t.Setenv(storage.EnvDataDir, t.TempDir())
+	newDataDir(t)
 	srv, err := Serve(func(Request) (any, error) {
 		return nil, fmt.Errorf("boom")
 	})
@@ -343,7 +359,7 @@ func TestCallPropagatesHandlerError(t *testing.T) {
 }
 
 func TestCallWithoutServerFails(t *testing.T) {
-	t.Setenv(storage.EnvDataDir, t.TempDir())
+	newDataDir(t)
 	if _, err := Call(Request{Cmd: "x"}); err == nil {
 		t.Error("Call with no server should fail")
 	}
