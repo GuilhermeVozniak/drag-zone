@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "build": "turbo run build --filter=@dragzone/web",
-    "lint": "turbo run lint --filter=@dragzone/web --filter=@dragzone/shared",
+    "lint": "turbo run lint --filter=@dragzone/web --filter=@dragzone/shared --filter=@dragzone/desktop-frontend",
     "test": "turbo run test --filter=@dragzone/web --filter=@dragzone/shared",
     "dev": "turbo run dev --filter=@dragzone/web"
   },
