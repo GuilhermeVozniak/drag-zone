@@ -21,7 +21,7 @@ Monorepo (from repo root — bun workspaces + turbo):
 bun install                        # install every workspace's deps
 bun run build                      # build the landing page (apps/web)
 bun run test                       # web + shared unit tests (vitest)
-bun run lint                       # biome check web + shared
+bun run lint                       # biome check web + shared + desktop frontend
 ```
 
 Desktop app (run from `apps/desktop` — always):
@@ -51,6 +51,26 @@ Gotchas:
   release tag so the download link resolves.
 - Tests that touch stores must set `t.Setenv(storage.EnvDataDir, t.TempDir())`
   or they will write to the real `~/Library/Application Support/DragZone`.
+
+## Quality gates
+
+`lefthook` runs local git hooks, auto-installed by `bun install` (the root
+`prepare` script runs `lefthook install`; run `bunx lefthook install` manually
+if hooks are missing):
+
+- **pre-commit** — `gofmt -w` + `biome check --write` on staged files (autofix
+  and re-stage).
+- **pre-push** — `bun run lint`, `golangci-lint`, fast Go tests
+  (`./internal/... ./cmd/...`), the desktop-frontend vitest, and web + shared
+  tests. It intentionally skips the `wails build`-dependent App-facade Go tests;
+  CI covers those.
+
+pre-push needs **golangci-lint** on PATH: `brew install golangci-lint`.
+
+CI (`.github/workflows/ci.yml`) is the authoritative gate. The web job (ubuntu)
+runs lint + web/shared tests + desktop-frontend vitest + build + e2e; the
+desktop job (macOS) runs gofmt, `wails build`, `golangci-lint run ./...`, and
+`go test ./...`. golangci-lint config lives in `.golangci.yml`.
 
 ## Conventions
 
