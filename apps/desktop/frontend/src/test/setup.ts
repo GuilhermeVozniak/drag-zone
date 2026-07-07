@@ -16,6 +16,12 @@ Element.prototype.hasPointerCapture ||= () => false
 Element.prototype.setPointerCapture ||= () => {}
 Element.prototype.releasePointerCapture ||= () => {}
 
+// jsdom doesn't implement elementFromPoint at all; provide a spy-able stub so
+// hit-testing tests can override it via vi.spyOn(document, 'elementFromPoint').
+if (!document.elementFromPoint) {
+  document.elementFromPoint = () => null
+}
+
 afterEach(() => {
   cleanup()
 })
