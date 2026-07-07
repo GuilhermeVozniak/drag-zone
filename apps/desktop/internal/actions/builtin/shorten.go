@@ -76,10 +76,13 @@ func parseHTTPURL(raw string) (string, error) {
 	return raw, nil
 }
 
+// tinyURLAPI is the TinyURL create endpoint; a package var for test injection.
+var tinyURLAPI = "https://tinyurl.com/api-create.php"
+
 // shortenWithTinyURL asks the TinyURL API for a short link.
 func shortenWithTinyURL(ctx context.Context, longURL string) (string, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://tinyurl.com/api-create.php?url="+url.QueryEscape(longURL), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, tinyURLAPI+"?url="+url.QueryEscape(longURL), nil)
 	if err != nil {
 		return "", err
 	}
