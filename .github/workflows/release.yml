@@ -19,7 +19,7 @@ jobs:
       # secrets are not readable in step-level `if:`; surface presence here.
       HAS_MACOS_SIGNING: ${{ secrets.MACOS_CERT_P12 != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Go
         uses: actions/setup-go@v5
