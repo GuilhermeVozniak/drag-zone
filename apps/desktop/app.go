@@ -126,7 +126,7 @@ func (a *App) addRecentShare(title, url string) {
 func (a *App) RecentShares() []Share {
 	a.taskMu.Lock()
 	defer a.taskMu.Unlock()
-	if a.recentShares == nil {
+	if len(a.recentShares) == 0 {
 		return []Share{}
 	}
 	return append([]Share(nil), a.recentShares...)
