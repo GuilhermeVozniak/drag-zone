@@ -15,7 +15,7 @@ import (
 func TotalSize(paths []string) int64 {
 	var total int64
 	for _, p := range paths {
-		filepath.WalkDir(p, func(_ string, d fs.DirEntry, err error) error {
+		_ = filepath.WalkDir(p, func(_ string, d fs.DirEntry, err error) error {
 			if err != nil || d.IsDir() {
 				return nil
 			}

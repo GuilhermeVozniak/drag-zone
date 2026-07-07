@@ -186,11 +186,11 @@ func (s *ScriptAction) consumeProtocol(r io.Reader, stdin io.Writer, inv actions
 		case "URL":
 			if payload != "" {
 				res.URL = payload
-				inv.Services.CopyToClipboard(payload)
+				_ = inv.Services.CopyToClipboard(payload)
 			}
 		case "TEXT":
 			if payload != "" {
-				inv.Services.CopyToClipboard(payload)
+				_ = inv.Services.CopyToClipboard(payload)
 			}
 		case "FAIL", "ERROR":
 			if kind == "ERROR" {

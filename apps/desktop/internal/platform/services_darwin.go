@@ -28,12 +28,12 @@ func (Services) ReadClipboard() (string, error) {
 // Notify shows a user notification.
 func (Services) Notify(title, body string) {
 	script := fmt.Sprintf("display notification %s with title %s", appleString(body), appleString(title))
-	exec.Command("osascript", "-e", script).Run()
+	_ = exec.Command("osascript", "-e", script).Run()
 }
 
 // PlaySound plays a named system sound asynchronously.
 func (Services) PlaySound(name string) {
-	exec.Command("afplay", "/System/Library/Sounds/"+name+".aiff").Start()
+	_ = exec.Command("afplay", "/System/Library/Sounds/"+name+".aiff").Start()
 }
 
 // OpenURL opens a URL in the default browser.

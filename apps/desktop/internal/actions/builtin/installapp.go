@@ -69,7 +69,7 @@ func installFromDMG(ctx context.Context, dmg string, progress actions.Progress) 
 	if mount == "" {
 		return "", fmt.Errorf("could not find mount point for %s", filepath.Base(dmg))
 	}
-	defer exec.Command("hdiutil", "detach", "-quiet", mount).Run()
+	defer func() { _ = exec.Command("hdiutil", "detach", "-quiet", mount).Run() }()
 
 	app, err := findApp(mount)
 	if err != nil {

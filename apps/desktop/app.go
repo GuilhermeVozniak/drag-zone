@@ -216,7 +216,7 @@ func (a *App) startup(ctx context.Context) {
 			a.draggingItem = ""
 			a.dragMu.Unlock()
 			if completed && itemID != "" {
-				a.DropBarConsume(itemID)
+				_ = a.DropBarConsume(itemID)
 			}
 		},
 		OpenSettings: func() {
@@ -232,7 +232,7 @@ func (a *App) startup(ctx context.Context) {
 			a.dragMu.Lock()
 			popped := a.poppedOut
 			a.dragMu.Unlock()
-			a.SetDropBarPopOut(!popped)
+			_ = a.SetDropBarPopOut(!popped)
 		},
 	})
 	platform.InitNative("DragZone")

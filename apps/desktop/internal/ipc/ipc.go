@@ -82,24 +82,24 @@ func (s *Server) accept(handler Handler) {
 
 func serveConn(conn net.Conn, handler Handler) {
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(30 * time.Second))
+	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
 
 	var req Request
 	if err := json.NewDecoder(conn).Decode(&req); err != nil {
-		json.NewEncoder(conn).Encode(Response{Error: "bad request: " + err.Error()})
+		_ = json.NewEncoder(conn).Encode(Response{Error: "bad request: " + err.Error()})
 		return
 	}
 	data, err := handler(req)
 	if err != nil {
-		json.NewEncoder(conn).Encode(Response{Error: err.Error()})
+		_ = json.NewEncoder(conn).Encode(Response{Error: err.Error()})
 		return
 	}
 	raw, err := json.Marshal(data)
 	if err != nil {
-		json.NewEncoder(conn).Encode(Response{Error: err.Error()})
+		_ = json.NewEncoder(conn).Encode(Response{Error: err.Error()})
 		return
 	}
-	json.NewEncoder(conn).Encode(Response{OK: true, Data: raw})
+	_ = json.NewEncoder(conn).Encode(Response{OK: true, Data: raw})
 }
 
 // Close stops the server and removes the socket file.
@@ -121,7 +121,7 @@ func Call(req Request) (json.RawMessage, error) {
 		return nil, fmt.Errorf("DragZone is not running")
 	}
 	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(30 * time.Second))
+	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
 
 	if err := json.NewEncoder(conn).Encode(req); err != nil {
 		return nil, err

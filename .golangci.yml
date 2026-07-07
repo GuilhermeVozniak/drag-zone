@@ -1,0 +1,32 @@
+# golangci-lint v2 config. Run from apps/desktop:
+#   golangci-lint run ./...                     (full tree; needs `wails build`)
+#   golangci-lint run ./internal/... ./cmd/...  (no embed/build needed)
+version: "2"
+run:
+  timeout: 5m
+linters:
+  # default set = errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  enable:
+    - misspell
+  exclusions:
+    generated: lax
+    presets:
+      - std-error-handling
+      - common-false-positives
+    rules:
+      # Tests intentionally ignore some errors (fixtures, best-effort writes).
+      - path: _test\.go
+        linters:
+          - errcheck
+      # AWS SDK manager.Uploader is deprecated (SA1019); migration to
+      # feature/s3/transfermanager is tracked separately (out of scope here).
+      - path: internal/actions/builtin/s3\.go
+        text: "SA1019"
+      # bundles' script protocol delimits fields with literal ASCII record/
+      # unit separators (U+001E/U+001F) by design (ST1018).
+      - path: internal/bundles/
+        text: "ST1018"
+formatters:
+  enable:
+    - gofmt

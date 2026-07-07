@@ -142,7 +142,7 @@ func connectRemote(ctx context.Context, protocol, host, port, user, pass string)
 			return nil, err
 		}
 		if err := conn.Login(user, pass); err != nil {
-			conn.Quit()
+			_ = conn.Quit()
 			return nil, fmt.Errorf("logging in as %s: %w", user, err)
 		}
 		return &ftpFS{conn: conn}, nil
