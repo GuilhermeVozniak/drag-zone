@@ -82,10 +82,7 @@ func (S3Upload) Dropped(ctx context.Context, inv actions.Invocation) (actions.Re
 		}
 	}
 
-	resultURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucket, region, firstKey)
-	if prefix := inv.Target.Option("url_prefix", ""); prefix != "" {
-		resultURL = strings.TrimRight(prefix, "/") + "/" + firstKey
-	}
+	resultURL := s3PublicURL(bucket, region, inv.Target.Option("url_prefix", ""), firstKey)
 	if err := inv.Services.CopyToClipboard(resultURL); err != nil {
 		return actions.Result{}, fmt.Errorf("copying URL to clipboard: %w", err)
 	}
@@ -114,4 +111,13 @@ func s3UploadOne(ctx context.Context, uploader *manager.Uploader, bucket, key st
 		Body:   body,
 	})
 	return err
+}
+
+// s3PublicURL builds the URL copied to the clipboard: the custom prefix when
+// set, otherwise the default virtual-hosted-style S3 URL.
+func s3PublicURL(bucket, region, urlPrefix, key string) string {
+	if urlPrefix != "" {
+		return strings.TrimRight(urlPrefix, "/") + "/" + key
+	}
+	return fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key)
 }

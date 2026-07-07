@@ -31,10 +31,13 @@ const (
 	driveTokenURL    = "https://oauth2.googleapis.com/token"
 	driveScope       = "https://www.googleapis.com/auth/drive.file"
 	driveUploadURL   = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
-	driveFilesURL    = "https://www.googleapis.com/drive/v3/files/"
 	driveAuthWait    = 3 * time.Minute // how long to wait for the browser consent callback
 	driveHTTPTimeout = 60 * time.Second
 )
+
+// driveFilesURL is a var (not const) so tests can point it at an httptest
+// server.
+var driveFilesURL = "https://www.googleapis.com/drive/v3/files/"
 
 // GoogleDriveUpload uploads dropped files and folders to Google Drive and
 // copies the web link of the first uploaded file to the clipboard.
