@@ -40,18 +40,16 @@ func (s *recSvc) Reveal(string) error            { return nil }
 func (s *recSvc) Trash([]string) error           { return nil }
 func (s *recSvc) AirDrop([]string) error         { return nil }
 
-// newRunner returns a runner whose Emit signals `changed` on every publish, so
-// tests can wait for the terminal state.
-func newRunner(t *testing.T, svc actions.Services) (*Runner, chan struct{}) {
+// newRunner returns a runner with a no-op Emit; tests wait for the terminal
+// state by polling List() via waitDone.
+func newRunner(t *testing.T, svc actions.Services) *Runner {
 	t.Helper()
-	changed := make(chan struct{}, 64)
-	r := NewRunner(Config{
-		Emit:          func(string, ...any) { changed <- struct{}{} },
+	return NewRunner(Config{
+		Emit:          func(string, ...any) {},
 		Services:      svc,
 		NotifyEnabled: func() bool { return true },
 		SoundsEnabled: func() bool { return true },
 	})
-	return r, changed
 }
 
 // waitDone polls List() until the single task reaches a terminal status.
@@ -73,7 +71,7 @@ func waitDone(t *testing.T, r *Runner) model.TaskState {
 
 func TestRunSuccessNotifiesAndPlaysGlass(t *testing.T) {
 	svc := &recSvc{}
-	r, _ := newRunner(t, svc)
+	r := newRunner(t, svc)
 	act := fakeAction{fn: func(inv actions.Invocation) (actions.Result, error) {
 		inv.Progress.Percent(50)
 		return actions.Result{Message: "done", URL: "https://x/y"}, nil
@@ -95,7 +93,7 @@ func TestRunSuccessNotifiesAndPlaysGlass(t *testing.T) {
 
 func TestRunErrorNotifiesAndPlaysBasso(t *testing.T) {
 	svc := &recSvc{}
-	r, _ := newRunner(t, svc)
+	r := newRunner(t, svc)
 	act := fakeAction{fn: func(actions.Invocation) (actions.Result, error) {
 		return actions.Result{}, errors.New("kaboom")
 	}}
@@ -114,14 +112,8 @@ func TestRunErrorNotifiesAndPlaysBasso(t *testing.T) {
 }
 
 func TestRunRejectsUnsupportedEvent(t *testing.T) {
-	r, _ := newRunner(t, &recSvc{})
-	// A Dropper-only action cannot be clicked.
-	dropOnly := struct {
-		actions.Action
-		actions.Dropper
-	}{}
-	_ = dropOnly
-	// Use fakeAction but call an invalid event string.
+	r := newRunner(t, &recSvc{})
+	// fakeAction supports Dropped/Clicked; an unknown event string is rejected.
 	if _, err := r.Run(context.Background(), fakeAction{fn: func(actions.Invocation) (actions.Result, error) {
 		return actions.Result{}, nil
 	}}, model.Target{Label: "T"}, model.Payload{}, "bogus"); err == nil {
@@ -130,7 +122,7 @@ func TestRunRejectsUnsupportedEvent(t *testing.T) {
 }
 
 func TestDismissRemovesFinishedTask(t *testing.T) {
-	r, _ := newRunner(t, &recSvc{})
+	r := newRunner(t, &recSvc{})
 	id, _ := r.Run(context.Background(), fakeAction{fn: func(actions.Invocation) (actions.Result, error) {
 		return actions.Result{Message: "ok"}, nil
 	}}, model.Target{ID: "t", Label: "T"}, model.Payload{}, model.EventDragged)
@@ -144,7 +136,7 @@ func TestDismissRemovesFinishedTask(t *testing.T) {
 func TestCancelAbortsRunningTask(t *testing.T) {
 	release := make(chan struct{})
 	started := make(chan struct{})
-	r, _ := newRunner(t, &recSvc{})
+	r := newRunner(t, &recSvc{})
 	act := fakeAction{fn: func(inv actions.Invocation) (actions.Result, error) {
 		close(started)
 		<-release // block until cancelled context fires? we simply wait
