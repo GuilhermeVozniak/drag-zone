@@ -16,6 +16,10 @@ import (
 	"dragzone/internal/model"
 )
 
+// imgurAPIURL is the upload endpoint; a package var so tests can point it at
+// an httptest server.
+var imgurAPIURL = "https://api.imgur.com/3/image"
+
 // ImgurUpload uploads dropped image files to Imgur and copies the resulting
 // link(s) to the clipboard.
 type ImgurUpload struct{}
@@ -104,7 +108,7 @@ func uploadToImgur(ctx context.Context, client *http.Client, clientID, path stri
 		pw.CloseWithError(mw.Close())
 	}()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.imgur.com/3/image", pr)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, imgurAPIURL, pr)
 	if err != nil {
 		return "", err
 	}
