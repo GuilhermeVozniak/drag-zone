@@ -21,5 +21,11 @@
     }
   },
   "include": ["src", "wailsjs"],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/test",
+    "src/lib/__mocks__"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
