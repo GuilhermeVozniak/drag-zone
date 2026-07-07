@@ -15,8 +15,10 @@ import (
 	"time"
 )
 
+// contentsURL is a var so tests can point List at an httptest server.
+var contentsURL = "https://api.github.com/repos/aptonic/dropzone4-actions/contents/"
+
 const (
-	contentsURL = "https://api.github.com/repos/aptonic/dropzone4-actions/contents/"
 	archiveURL  = "https://codeload.github.com/aptonic/dropzone4-actions/zip/refs/heads/master"
 	cacheMaxAge = 24 * time.Hour
 )
