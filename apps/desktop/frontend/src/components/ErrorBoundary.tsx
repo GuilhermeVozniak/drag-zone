@@ -1,7 +1,7 @@
-import { Component, type ErrorInfo, type ReactNode } from "react"
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface ErrorBoundaryState {
-  error: Error | null
+  error: Error | null;
 }
 
 /**
@@ -9,14 +9,14 @@ interface ErrorBoundaryState {
  * instead of letting the whole (transparent) window blank out to grey.
  */
 export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
-  state: ErrorBoundaryState = { error: null }
+  state: ErrorBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { error }
+    return { error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("DragZone UI error:", error, info.componentStack)
+    console.error("DragZone UI error:", error, info.componentStack);
   }
 
   render() {
@@ -28,8 +28,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
             {this.state.error.message}
           </pre>
         </div>
-      )
+      );
     }
-    return this.props.children
+    return this.props.children;
   }
 }

@@ -1,20 +1,21 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import path from 'node:path'
+
+import path from "node:path";
+import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ["./src/test/setup.ts"],
     // Stub the generated Wails modules that a few source files import
     // directly. Test-only: never applied to `vite build`.
     // NOTE: the leading `.*` in each `find` is REQUIRED — rollup-alias (behind
@@ -24,12 +25,12 @@ export default defineConfig({
     alias: [
       {
         find: /.*wailsjs\/runtime\/runtime$/,
-        replacement: path.resolve(__dirname, './src/test/stubs/runtime.ts'),
+        replacement: path.resolve(__dirname, "./src/test/stubs/runtime.ts"),
       },
       {
         find: /.*wailsjs\/go\/main\/App$/,
-        replacement: path.resolve(__dirname, './src/test/stubs/App.ts'),
+        replacement: path.resolve(__dirname, "./src/test/stubs/App.ts"),
       },
     ],
   },
-})
+});

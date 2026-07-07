@@ -1,32 +1,32 @@
-import { useEffect, useState } from "react"
-import { backend } from "@/lib/backend"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { backend } from "@/lib/backend";
 
 /** Mirrors Dropzone 4's Command Line tab: install the dz tool and usage. */
 export function CommandLineTab() {
-  const [installed, setInstalled] = useState<boolean | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [installed, setInstalled] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const refresh = () => backend.cli.installed().then(setInstalled)
+  const refresh = () => backend.cli.installed().then(setInstalled);
   useEffect(() => {
-    refresh()
-  }, [])
+    refresh();
+  }, []);
 
   const install = async () => {
-    setError(null)
+    setError(null);
     try {
-      await backend.cli.install()
-      await refresh()
+      await backend.cli.install();
+      await refresh();
     } catch (e) {
-      setError(String(e))
+      setError(String(e));
     }
-  }
+  };
 
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-neutral-300">
-        The <code className="font-mono">dz</code> command line tool controls
-        DragZone from the terminal.
+        The <code className="font-mono">dz</code> command line tool controls DragZone from the
+        terminal.
       </p>
       <div className="flex items-center gap-2">
         <span className="text-xs text-neutral-400">
@@ -55,5 +55,5 @@ dz open | close                      show / hide the grid
 dz open-dropbar | close-dropbar      pop out / dock Drop Bar`}
       </pre>
     </div>
-  )
+  );
 }

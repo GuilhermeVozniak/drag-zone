@@ -1,30 +1,30 @@
 // Typed facade over the generated Wails bindings and runtime events.
-import * as App from "../../wailsjs/go/main/App"
-import { EventsOn } from "../../wailsjs/runtime/runtime"
-import type { config, dropbar, main, model } from "../../wailsjs/go/models"
+import * as App from "../../wailsjs/go/main/App";
+import type { config, dropbar, main, model } from "../../wailsjs/go/models";
+import { EventsOn } from "../../wailsjs/runtime/runtime";
 
 /** UI scale derived from the grid-size setting (mirrors config.Settings.Scale). */
 export function uiScale(s: Settings | null): number {
-  const pct = Math.min(100, Math.max(0, s?.gridSize ?? 33))
-  return 0.8 + (pct / 100) * 0.6
+  const pct = Math.min(100, Math.max(0, s?.gridSize ?? 33));
+  return 0.8 + (pct / 100) * 0.6;
 }
 
-export type Settings = config.Settings
-export type AddonInfo = main.AddonInfo
-export type UpdateInfo = main.UpdateInfo
-export type Share = main.Share
-export type Target = model.Target
-export type ActionSpec = model.ActionSpec
-export type OptionField = model.OptionField
-export type TaskState = model.TaskState
-export type DropBarItem = dropbar.Item
+export type Settings = config.Settings;
+export type AddonInfo = main.AddonInfo;
+export type UpdateInfo = main.UpdateInfo;
+export type Share = main.Share;
+export type Target = model.Target;
+export type ActionSpec = model.ActionSpec;
+export type OptionField = model.OptionField;
+export type TaskState = model.TaskState;
+export type DropBarItem = dropbar.Item;
 
-export type PayloadKind = "files" | "text" | "url"
+export type PayloadKind = "files" | "text" | "url";
 
 export interface Payload {
-  kind: PayloadKind
-  paths?: string[]
-  text?: string
+  kind: PayloadKind;
+  paths?: string[];
+  text?: string;
 }
 
 export const backend = {
@@ -102,7 +102,7 @@ export const backend = {
     quit: App.Quit,
     about: App.About,
   },
-}
+};
 
 // Event subscriptions; each returns an unsubscribe function.
 export const events = {
@@ -110,21 +110,12 @@ export const events = {
   onTasksChanged: (fn: (tasks: TaskState[]) => void) => EventsOn("tasks:changed", fn),
   onDropBarChanged: (fn: (items: DropBarItem[]) => void) => EventsOn("dropbar:changed", fn),
   onOpenSettings: (fn: () => void) => EventsOn("settings:open", fn),
-  onSpecsChanged: (fn: (specs: ActionSpec[]) => void) =>
-    EventsOn("specs:changed", fn),
-  onDropBarPopOut: (fn: (popped: boolean) => void) =>
-    EventsOn("dropbar:popout", fn),
+  onSpecsChanged: (fn: (specs: ActionSpec[]) => void) => EventsOn("specs:changed", fn),
+  onDropBarPopOut: (fn: (popped: boolean) => void) => EventsOn("dropbar:popout", fn),
   onInputRequest: (
-    fn: (req: {
-      id: string
-      title: string
-      prompt: string
-      choices?: string[]
-    }) => void
+    fn: (req: { id: string; title: string; prompt: string; choices?: string[] }) => void,
   ) => EventsOn("input:request", fn),
-  onWindowVisibility: (fn: (visible: boolean) => void) =>
-    EventsOn("window:visibility", fn),
+  onWindowVisibility: (fn: (visible: boolean) => void) => EventsOn("window:visibility", fn),
   onWindowBeak: (fn: (x: number) => void) => EventsOn("window:beak", fn),
-  onSharesChanged: (fn: (shares: Share[]) => void) =>
-    EventsOn("shares:changed", fn),
-}
+  onSharesChanged: (fn: (shares: Share[]) => void) => EventsOn("shares:changed", fn),
+};

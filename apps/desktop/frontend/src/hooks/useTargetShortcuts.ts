@@ -1,5 +1,5 @@
-import { useEffect } from "react"
-import { backend, type Target } from "@/lib/backend"
+import { useEffect } from "react";
+import { backend, type Target } from "@/lib/backend";
 
 /**
  * Launches targets by their single-key shortcut while the grid is open,
@@ -8,18 +8,18 @@ import { backend, type Target } from "@/lib/backend"
 export function useTargetShortcuts(targets: Target[]) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      const el = e.target as HTMLElement
-      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable) return
-      const key = e.key.length === 1 ? e.key.toUpperCase() : ""
-      if (!key) return
-      const match = targets.find((t) => t.shortcut?.toUpperCase() === key)
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement;
+      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable) return;
+      const key = e.key.length === 1 ? e.key.toUpperCase() : "";
+      if (!key) return;
+      const match = targets.find((t) => t.shortcut?.toUpperCase() === key);
       if (match) {
-        e.preventDefault()
-        backend.click(match.id)
+        e.preventDefault();
+        backend.click(match.id);
       }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [targets])
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [targets]);
 }

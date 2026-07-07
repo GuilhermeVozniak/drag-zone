@@ -1,25 +1,25 @@
-import type { OptionField } from "@/lib/backend"
-import { backend } from "@/lib/backend"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import type { OptionField } from "@/lib/backend";
+import { backend } from "@/lib/backend";
 
 interface OptionsFormProps {
-  fields: OptionField[]
-  values: Record<string, string>
-  onChange: (values: Record<string, string>) => void
+  fields: OptionField[];
+  values: Record<string, string>;
+  onChange: (values: Record<string, string>) => void;
 }
 
 export function OptionsForm({ fields, values, onChange }: OptionsFormProps) {
-  const set = (key: string, value: string) => onChange({ ...values, [key]: value })
+  const set = (key: string, value: string) => onChange({ ...values, [key]: value });
 
   return (
     <div className="flex flex-col gap-3">
@@ -45,18 +45,15 @@ export function OptionsForm({ fields, values, onChange }: OptionsFormProps) {
                   const path =
                     f.type === "app"
                       ? await backend.dialogs.chooseApplication()
-                      : await backend.dialogs.chooseFolder()
-                  if (path) set(f.key, path)
+                      : await backend.dialogs.chooseFolder();
+                  if (path) set(f.key, path);
                 }}
               >
                 Choose…
               </Button>
             </div>
           ) : f.type === "select" ? (
-            <Select
-              value={values[f.key] ?? f.default}
-              onValueChange={(v) => set(f.key, v)}
-            >
+            <Select value={values[f.key] ?? f.default} onValueChange={(v) => set(f.key, v)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
@@ -77,5 +74,5 @@ export function OptionsForm({ fields, values, onChange }: OptionsFormProps) {
         </div>
       ))}
     </div>
-  )
+  );
 }

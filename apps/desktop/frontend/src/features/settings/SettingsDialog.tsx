@@ -1,21 +1,16 @@
-import { useSettings } from "@/hooks/useBackend"
-import { backend } from "@/lib/backend"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AddonsTab } from "./AddonsTab"
-import { CommandLineTab } from "./CommandLineTab"
-import { GeneralTab } from "./GeneralTab"
-import { UpdatesTab } from "./UpdatesTab"
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSettings } from "@/hooks/useBackend";
+import { backend } from "@/lib/backend";
+import { AddonsTab } from "./AddonsTab";
+import { CommandLineTab } from "./CommandLineTab";
+import { GeneralTab } from "./GeneralTab";
+import { UpdatesTab } from "./UpdatesTab";
 
 interface SettingsDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 /**
@@ -24,8 +19,8 @@ interface SettingsDialogProps {
  * always-on-top window rather than a multi-window process.
  */
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  const [settings, update] = useSettings()
-  if (!settings) return null
+  const [settings, update] = useSettings();
+  if (!settings) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,5 +60,5 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

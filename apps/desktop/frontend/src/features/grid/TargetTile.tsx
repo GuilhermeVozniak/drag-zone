@@ -1,17 +1,17 @@
-import { useState } from "react"
-import type { ActionSpec, Target } from "@/lib/backend"
-import { useFileIcon } from "@/hooks/useFileIcon"
-import { ActionTileIcon } from "@/components/ActionIcon"
-import { Plus, X } from "lucide-react"
-import { DROPBAR_MIME, TARGET_MIME, payloadFromDataTransfer } from "@/lib/dnd"
-import { cn } from "@/lib/utils"
+import { Plus, X } from "lucide-react";
+import { useState } from "react";
+import { ActionTileIcon } from "@/components/ActionIcon";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu"
+} from "@/components/ui/context-menu";
+import { useFileIcon } from "@/hooks/useFileIcon";
+import type { ActionSpec, Target } from "@/lib/backend";
+import { DROPBAR_MIME, payloadFromDataTransfer, TARGET_MIME } from "@/lib/dnd";
+import { cn } from "@/lib/utils";
 
 // Glyphs for the KeyModifier hint shown over a tile while dragging onto it.
 const MODIFIER_GLYPH: Record<string, string> = {
@@ -22,20 +22,20 @@ const MODIFIER_GLYPH: Record<string, string> = {
   shift: "⇧",
   control: "⌃",
   ctrl: "⌃",
-}
+};
 
 interface TargetTileProps {
-  target: Target
-  spec: ActionSpec | undefined
-  showKeyOverlay: boolean
-  optionHeld: boolean
-  onClick: () => void
-  onEdit: () => void
-  onDuplicate: () => void
-  onRemove: () => void
-  onDropBarItemDrop: (itemId: string) => void
-  onTextDrop: (text: string, isUrl: boolean) => void
-  onReorder: (draggedTargetId: string) => void
+  target: Target;
+  spec: ActionSpec | undefined;
+  showKeyOverlay: boolean;
+  optionHeld: boolean;
+  onClick: () => void;
+  onEdit: () => void;
+  onDuplicate: () => void;
+  onRemove: () => void;
+  onDropBarItemDrop: (itemId: string) => void;
+  onTextDrop: (text: string, isUrl: boolean) => void;
+  onReorder: (draggedTargetId: string) => void;
 }
 
 export function TargetTile({
@@ -51,9 +51,9 @@ export function TargetTile({
   onTextDrop,
   onReorder,
 }: TargetTileProps) {
-  const [hover, setHover] = useState(false)
+  const [hover, setHover] = useState(false);
   // Folder and app tiles show the real Finder icon of their configured path.
-  const nativeIcon = useFileIcon(target.options?.path || target.options?.app)
+  const nativeIcon = useFileIcon(target.options?.path || target.options?.app);
 
   return (
     <ContextMenu>
@@ -62,45 +62,43 @@ export function TargetTile({
           data-drop-id={target.id}
           draggable
           onDragStart={(e) => {
-            e.dataTransfer.setData(TARGET_MIME, target.id)
-            e.dataTransfer.effectAllowed = "move"
+            e.dataTransfer.setData(TARGET_MIME, target.id);
+            e.dataTransfer.effectAllowed = "move";
           }}
           className={cn(
             "group relative flex w-[76px] flex-col items-center gap-1.5 rounded-xl p-2 outline-none",
             "transition-transform duration-100",
             hover && !optionHeld && "scale-105",
             // Delete mode jiggles the tiles, like Dropzone / iOS edit mode.
-            optionHeld && "animate-[dz-jiggle_0.32s_ease-in-out_infinite]"
+            optionHeld && "animate-[dz-jiggle_0.32s_ease-in-out_infinite]",
           )}
           style={
             {
               "--wails-drop-target": "drop",
-              ...(optionHeld
-                ? { animationDelay: `${(target.position % 4) * 45}ms` }
-                : {}),
+              ...(optionHeld ? { animationDelay: `${(target.position % 4) * 45}ms` } : {}),
             } as React.CSSProperties
           }
           onClick={onClick}
           onDragOver={(e) => {
-            e.preventDefault()
-            setHover(true)
+            e.preventDefault();
+            setHover(true);
           }}
           onDragLeave={() => setHover(false)}
           onDrop={(e) => {
-            e.preventDefault()
-            setHover(false)
-            const draggedTarget = e.dataTransfer.getData(TARGET_MIME)
+            e.preventDefault();
+            setHover(false);
+            const draggedTarget = e.dataTransfer.getData(TARGET_MIME);
             if (draggedTarget && draggedTarget !== target.id) {
-              onReorder(draggedTarget)
-              return
+              onReorder(draggedTarget);
+              return;
             }
-            const itemId = e.dataTransfer.getData(DROPBAR_MIME)
+            const itemId = e.dataTransfer.getData(DROPBAR_MIME);
             if (itemId) {
-              onDropBarItemDrop(itemId)
-              return
+              onDropBarItemDrop(itemId);
+              return;
             }
-            const payload = payloadFromDataTransfer(e.dataTransfer)
-            if (payload?.text) onTextDrop(payload.text, payload.kind === "url")
+            const payload = payloadFromDataTransfer(e.dataTransfer);
+            if (payload?.text) onTextDrop(payload.text, payload.kind === "url");
           }}
         >
           <div
@@ -109,7 +107,7 @@ export function TargetTile({
               "transition-all duration-100",
               // A dragged file darkens the hovered icon, like Finder's
               // drop-target folders — no ring or background.
-              hover && "brightness-[0.6] saturate-150"
+              hover && "brightness-[0.6] saturate-150",
             )}
           >
             {nativeIcon ? (
@@ -147,8 +145,8 @@ export function TargetTile({
             <span
               role="button"
               onClick={(e) => {
-                e.stopPropagation()
-                onRemove()
+                e.stopPropagation();
+                onRemove();
               }}
               className="absolute left-0.5 top-0.5 z-10 flex size-5 items-center justify-center rounded-md bg-neutral-600/90 shadow"
               title="Remove from Grid"
@@ -172,5 +170,5 @@ export function TargetTile({
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-import type { ActionSpec } from "@/lib/backend"
+import type { ActionSpec } from "@/lib/backend";
 
 /** What clicking a grid tile should do, given its action's spec. */
-export type ClickBehavior = "run" | "config" | "none"
+export type ClickBehavior = "run" | "config" | "none";
 
 /**
  * Dropzone runs an action's click handler on click. Actions that declare no
@@ -11,7 +11,7 @@ export type ClickBehavior = "run" | "config" | "none"
  */
 export function clickBehavior(spec: ActionSpec | undefined): ClickBehavior {
   if (spec && !(spec.events ?? []).includes("clicked")) {
-    return spec.options && spec.options.length > 0 ? "config" : "none"
+    return spec.options && spec.options.length > 0 ? "config" : "none";
   }
-  return "run"
+  return "run";
 }

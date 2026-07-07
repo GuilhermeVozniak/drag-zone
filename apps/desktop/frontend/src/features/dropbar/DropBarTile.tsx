@@ -1,21 +1,21 @@
-import { useRef, useState } from "react"
-import { backend, type DropBarItem } from "@/lib/backend"
-import { useFileIcon } from "@/hooks/useFileIcon"
-import { DROPBAR_MIME } from "@/lib/dnd"
-import { File, Files, Link, Lock, Type, X } from "lucide-react"
+import { File, Files, Link, Lock, Type, X } from "lucide-react";
+import { useRef, useState } from "react";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu"
-import { RenameItemDialog } from "./RenameItemDialog"
+} from "@/components/ui/context-menu";
+import { useFileIcon } from "@/hooks/useFileIcon";
+import { backend, type DropBarItem } from "@/lib/backend";
+import { DROPBAR_MIME } from "@/lib/dnd";
+import { RenameItemDialog } from "./RenameItemDialog";
 
 function itemIcon(item: DropBarItem) {
-  if (item.kind === "files") return (item.paths?.length ?? 0) > 1 ? Files : File
-  if (item.kind === "url") return Link
-  return Type
+  if (item.kind === "files") return (item.paths?.length ?? 0) > 1 ? Files : File;
+  if (item.kind === "url") return Link;
+  return Type;
 }
 
 /**
@@ -24,21 +24,19 @@ function itemIcon(item: DropBarItem) {
  * it's clear which stack you're about to grab. paths[0] is drawn on top.
  */
 function StackFan({ paths }: { paths: string[] }) {
-  const first = useFileIcon(paths[0])
-  const second = useFileIcon(paths[1])
-  const third = useFileIcon(paths[2])
+  const first = useFileIcon(paths[0]);
+  const second = useFileIcon(paths[1]);
+  const third = useFileIcon(paths[2]);
   const layers = [
     {
       icon: third,
       base: "-rotate-[10deg] -translate-x-2",
-      hover:
-        "group-hover:-rotate-[18deg] group-hover:-translate-x-4 group-hover:-translate-y-0.5",
+      hover: "group-hover:-rotate-[18deg] group-hover:-translate-x-4 group-hover:-translate-y-0.5",
     },
     {
       icon: second,
       base: "rotate-[8deg] translate-x-2",
-      hover:
-        "group-hover:rotate-[18deg] group-hover:translate-x-4 group-hover:-translate-y-0.5",
+      hover: "group-hover:rotate-[18deg] group-hover:translate-x-4 group-hover:-translate-y-0.5",
     },
     {
       icon: first,
@@ -46,9 +44,9 @@ function StackFan({ paths }: { paths: string[] }) {
       hover:
         "group-hover:-translate-y-1 group-hover:scale-[1.12] group-hover:ring-2 group-hover:ring-sky-400/80",
     },
-  ].filter((l) => l.icon)
+  ].filter((l) => l.icon);
   if (layers.length === 0) {
-    return <Files className="size-7 text-neutral-300" strokeWidth={1.5} />
+    return <Files className="size-7 text-neutral-300" strokeWidth={1.5} />;
   }
   return (
     <div className="relative size-[48px]">
@@ -62,12 +60,12 @@ function StackFan({ paths }: { paths: string[] }) {
         />
       ))}
     </div>
-  )
+  );
 }
 
 interface DropBarTileProps {
-  item: DropBarItem
-  onRemove: (id: string) => void
+  item: DropBarItem;
+  onRemove: (id: string) => void;
 }
 
 /**
@@ -76,12 +74,12 @@ interface DropBarTileProps {
  * text/URL items use HTML5 drag for in-window drops onto grid tiles.
  */
 export function DropBarTile({ item, onRemove }: DropBarTileProps) {
-  const Icon = itemIcon(item)
-  const count = item.paths?.length ?? 0
-  const nativeIcon = useFileIcon(item.paths?.[0])
-  const dragStart = useRef<{ x: number; y: number } | null>(null)
-  const isFiles = item.kind === "files"
-  const [renaming, setRenaming] = useState<string | null>(null)
+  const Icon = itemIcon(item);
+  const count = item.paths?.length ?? 0;
+  const nativeIcon = useFileIcon(item.paths?.[0]);
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const isFiles = item.kind === "files";
+  const [renaming, setRenaming] = useState<string | null>(null);
 
   return (
     <ContextMenu>
@@ -89,27 +87,27 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
         <div
           draggable={!isFiles}
           onDragStart={(e) => {
-            e.dataTransfer.setData(DROPBAR_MIME, item.id)
-            e.dataTransfer.effectAllowed = "copyMove"
+            e.dataTransfer.setData(DROPBAR_MIME, item.id);
+            e.dataTransfer.effectAllowed = "copyMove";
           }}
           onMouseDown={(e) => {
             if (isFiles && e.button === 0) {
-              dragStart.current = { x: e.clientX, y: e.clientY }
+              dragStart.current = { x: e.clientX, y: e.clientY };
             }
           }}
           onMouseMove={(e) => {
-            const start = dragStart.current
-            if (!start) return
+            const start = dragStart.current;
+            if (!start) return;
             if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) {
-              dragStart.current = null
-              backend.dragOut(item.id)
+              dragStart.current = null;
+              backend.dragOut(item.id);
             }
           }}
           onMouseUp={() => {
-            dragStart.current = null
+            dragStart.current = null;
           }}
           onDoubleClick={() => {
-            if (isFiles) backend.quickLook(item.paths ?? [])
+            if (isFiles) backend.quickLook(item.paths ?? []);
           }}
           className="group relative flex w-[64px] cursor-grab flex-col items-center gap-1 rounded-lg p-1.5 hover:bg-white/[0.08]"
         >
@@ -149,9 +147,7 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem
-          onClick={() => backend.dropBar.setLocked(item.id, !item.locked)}
-        >
+        <ContextMenuItem onClick={() => backend.dropBar.setLocked(item.id, !item.locked)}>
           {item.locked ? "Unlock Items" : "Lock Items"}
         </ContextMenuItem>
         {count > 1 && (
@@ -184,5 +180,5 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
       </ContextMenuContent>
       <RenameItemDialog item={item} value={renaming} onValueChange={setRenaming} />
     </ContextMenu>
-  )
+  );
 }

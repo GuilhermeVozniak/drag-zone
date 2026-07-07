@@ -1,57 +1,52 @@
-import { useEffect, useState } from "react"
-import { backend, type AddonInfo } from "@/lib/backend"
-import { Button } from "@/components/ui/button"
-import { Package } from "lucide-react"
+import { Package } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { type AddonInfo, backend } from "@/lib/backend";
 
-type InstallState = "installing" | "done" | string // string = error message
+type InstallState = "installing" | "done" | string; // string = error message
 
 /**
  * Mirrors Dropzone 4's Add-on Actions tab: the live catalogue from the
  * official aptonic/dropzone4-actions repository with one-click install.
  */
 export function AddonsTab() {
-  const [addons, setAddons] = useState<AddonInfo[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [installState, setInstallState] = useState<Record<string, InstallState>>({})
+  const [addons, setAddons] = useState<AddonInfo[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [installState, setInstallState] = useState<Record<string, InstallState>>({});
 
   useEffect(() => {
     backend.addons
       .list()
       .then(setAddons)
-      .catch((e) => setError(String(e)))
-  }, [])
+      .catch((e) => setError(String(e)));
+  }, []);
 
   const install = async (name: string) => {
-    setInstallState((s) => ({ ...s, [name]: "installing" }))
+    setInstallState((s) => ({ ...s, [name]: "installing" }));
     try {
-      await backend.addons.install(name)
-      setInstallState((s) => ({ ...s, [name]: "done" }))
+      await backend.addons.install(name);
+      setInstallState((s) => ({ ...s, [name]: "done" }));
     } catch (e) {
-      setInstallState((s) => ({ ...s, [name]: String(e) }))
+      setInstallState((s) => ({ ...s, [name]: String(e) }));
     }
-  }
+  };
 
   if (error) {
-    return <p className="py-6 text-center text-xs text-red-400">{error}</p>
+    return <p className="py-6 text-center text-xs text-red-400">{error}</p>;
   }
   if (!addons) {
-    return (
-      <p className="py-6 text-center text-xs text-neutral-500">
-        Loading add-on actions…
-      </p>
-    )
+    return <p className="py-6 text-center text-xs text-neutral-500">Loading add-on actions…</p>;
   }
 
   return (
     <div className="flex flex-col">
       <p className="pb-2 text-[11px] text-neutral-500">
-        Community actions from aptonic/dropzone4-actions. Installed actions
-        appear in the “+” menu.
+        Community actions from aptonic/dropzone4-actions. Installed actions appear in the “+” menu.
       </p>
       <div className="flex max-h-[300px] flex-col gap-0.5 overflow-y-auto pr-1">
         {addons.map((a) => {
-          const state = installState[a.name]
-          const installed = a.installed || state === "done"
+          const state = installState[a.name];
+          const installed = a.installed || state === "done";
           return (
             <div
               key={a.name}
@@ -74,7 +69,7 @@ export function AddonsTab() {
                 {installed ? "Installed" : state === "installing" ? "Installing…" : "Install"}
               </Button>
             </div>
-          )
+          );
         })}
       </div>
       <Button
@@ -86,5 +81,5 @@ export function AddonsTab() {
         Open Add-on Actions Folder
       </Button>
     </div>
-  )
+  );
 }

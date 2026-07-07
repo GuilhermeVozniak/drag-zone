@@ -1,20 +1,20 @@
-import type { DropBarItem } from "@/lib/backend"
-import { backend } from "@/lib/backend"
-import { ArrowDownToLine, Plus } from "lucide-react"
+import { ArrowDownToLine, Plus } from "lucide-react";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu"
-import { DropBarTile } from "./DropBarTile"
+} from "@/components/ui/context-menu";
+import type { DropBarItem } from "@/lib/backend";
+import { backend } from "@/lib/backend";
+import { DropBarTile } from "./DropBarTile";
 
 interface TopSectionProps {
-  items: DropBarItem[]
+  items: DropBarItem[];
   /** The Add to Grid tile is omitted in the popped-out Drop Bar. */
-  showAddToGrid?: boolean
-  onAddClick?: () => void
+  showAddToGrid?: boolean;
+  onAddClick?: () => void;
 }
 
 function DashedTile({
@@ -23,10 +23,10 @@ function DashedTile({
   onClick,
   children,
 }: {
-  dropId: string
-  label: string
-  onClick?: () => void
-  children: React.ReactNode
+  dropId: string;
+  label: string;
+  onClick?: () => void;
+  children: React.ReactNode;
 }) {
   return (
     <button
@@ -40,7 +40,7 @@ function DashedTile({
       </span>
       <span className="text-[11px] text-neutral-400">{label}</span>
     </button>
-  )
+  );
 }
 
 /**
@@ -67,11 +67,7 @@ export function TopSection({ items, showAddToGrid = true, onAddClick }: TopSecti
             <ArrowDownToLine className="size-6 text-neutral-300" strokeWidth={2} />
           </DashedTile>
           {items.map((item) => (
-            <DropBarTile
-              key={item.id}
-              item={item}
-              onRemove={(id) => backend.dropBar.remove(id)}
-            />
+            <DropBarTile key={item.id} item={item} onRemove={(id) => backend.dropBar.remove(id)} />
           ))}
         </div>
       </ContextMenuTrigger>
@@ -92,5 +88,5 @@ export function TopSection({ items, showAddToGrid = true, onAddClick }: TopSecti
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
-  )
+  );
 }

@@ -1,21 +1,21 @@
-import { useState } from "react"
 import {
   ArrowLeft,
   ArrowRight,
   Boxes,
   Keyboard,
   Layers,
+  type LucideIcon,
   MousePointerSquareDashed,
   Puzzle,
-  type LucideIcon,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+} from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface Slide {
-  icon: LucideIcon
-  title: string
-  body: string
+  icon: LucideIcon;
+  title: string;
+  body: string;
 }
 
 // First-run tour, mirroring Dropzone 4's six-slide welcome carousel.
@@ -45,14 +45,14 @@ const SLIDES: Slide[] = [
     title: "Add-ons & the dz CLI",
     body: "Install more actions from Settings › Add-on Actions, and drive DragZone from the terminal with the bundled dz command-line tool.",
   },
-]
+];
 
 /** First-run welcome carousel; onDone persists the dismissal via settings. */
 export function Onboarding({ onDone }: { onDone: () => void }) {
-  const [index, setIndex] = useState(0)
-  const slide = SLIDES[index]
-  const Icon = slide.icon
-  const last = index === SLIDES.length - 1
+  const [index, setIndex] = useState(0);
+  const slide = SLIDES[index];
+  const Icon = slide.icon;
+  const last = index === SLIDES.length - 1;
 
   return (
     <div className="flex h-full flex-col px-6 pb-6 pt-4 text-center">
@@ -68,9 +68,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           <Icon className="size-9 text-sky-400" strokeWidth={1.5} />
         </div>
         <h2 className="text-lg font-semibold text-neutral-100">{slide.title}</h2>
-        <p className="max-w-[290px] text-[13px] leading-relaxed text-neutral-400">
-          {slide.body}
-        </p>
+        <p className="max-w-[290px] text-[13px] leading-relaxed text-neutral-400">{slide.body}</p>
       </div>
 
       <div className="mb-4 flex items-center justify-center gap-1.5">
@@ -81,7 +79,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             aria-label={`Slide ${n + 1}`}
             className={cn(
               "size-1.5 rounded-full transition-colors",
-              n === index ? "bg-sky-400" : "bg-white/20 hover:bg-white/40"
+              n === index ? "bg-sky-400" : "bg-white/20 hover:bg-white/40",
             )}
           />
         ))}
@@ -107,5 +105,5 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
         )}
       </div>
     </div>
-  )
+  );
 }

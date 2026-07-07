@@ -1,27 +1,27 @@
-import { useEffect, useState } from "react"
-import { backend, events, type Share } from "@/lib/backend"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
+import { backend, events, type Share } from "@/lib/backend";
 
 /**
  * The "Recently Shared" pill in the grid header: a menu of recently
  * uploaded/shared URLs (click to reopen). Hidden until something was shared.
  */
 export function RecentSharesPill() {
-  const [shares, setShares] = useState<Share[]>([])
+  const [shares, setShares] = useState<Share[]>([]);
 
   useEffect(() => {
-    backend.shares.list().then((v) => setShares(v ?? []))
-    return events.onSharesChanged((v) => setShares(v ?? []))
-  }, [])
+    backend.shares.list().then((v) => setShares(v ?? []));
+    return events.onSharesChanged((v) => setShares(v ?? []));
+  }, []);
 
-  if (shares.length === 0) return null
+  if (shares.length === 0) return null;
 
   return (
     <DropdownMenu>
@@ -41,10 +41,8 @@ export function RecentSharesPill() {
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => backend.shares.clear()}>
-          Clear Menu
-        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => backend.shares.clear()}>Clear Menu</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

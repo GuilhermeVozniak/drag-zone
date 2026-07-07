@@ -1,22 +1,22 @@
-import { useState } from "react"
-import { backend } from "@/lib/backend"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
+import { backend } from "@/lib/backend";
 
 /**
  * The "Develop Action…" workflow: creates a template .dzbundle in the
  * actions folder, registers it, and opens it for editing.
  */
 export function DevelopActionRow() {
-  const [name, setName] = useState("")
-  const [lang, setLang] = useState("ruby")
+  const [name, setName] = useState("");
+  const [lang, setLang] = useState("ruby");
   return (
     <div className="flex items-center gap-1.5">
       <Input
@@ -39,12 +39,12 @@ export function DevelopActionRow() {
         variant="secondary"
         disabled={!name.trim()}
         onClick={async () => {
-          await backend.actions.develop(name.trim(), lang)
-          setName("")
+          await backend.actions.develop(name.trim(), lang);
+          setName("");
         }}
       >
         Develop
       </Button>
     </div>
-  )
+  );
 }

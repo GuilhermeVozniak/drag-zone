@@ -1,14 +1,14 @@
-import type { ActionSpec, Target, TaskState } from "@/lib/backend"
-import { backend } from "@/lib/backend"
-import { ActionTileIcon } from "@/components/ActionIcon"
-import { cn } from "@/lib/utils"
-import { X } from "lucide-react"
-import { Progress } from "@/components/ui/progress"
+import { X } from "lucide-react";
+import { ActionTileIcon } from "@/components/ActionIcon";
+import { Progress } from "@/components/ui/progress";
+import type { ActionSpec, Target, TaskState } from "@/lib/backend";
+import { backend } from "@/lib/backend";
+import { cn } from "@/lib/utils";
 
 interface TaskListProps {
-  tasks: TaskState[]
-  targets: Target[]
-  specFor: (actionId: string) => ActionSpec | undefined
+  tasks: TaskState[];
+  targets: Target[];
+  specFor: (actionId: string) => ActionSpec | undefined;
 }
 
 /**
@@ -19,9 +19,9 @@ export function TaskList({ tasks, targets, specFor }: TaskListProps) {
   return (
     <div className="flex flex-col gap-2 px-4 pb-2">
       {tasks.slice(0, 4).map((task) => {
-        const target = targets.find((t) => t.id === task.targetId)
-        const spec = target ? specFor(target.actionId) : undefined
-        const running = task.status === "running"
+        const target = targets.find((t) => t.id === task.targetId);
+        const spec = target ? specFor(target.actionId) : undefined;
+        const running = task.status === "running";
         return (
           <div key={task.id} className="flex items-center gap-2.5">
             <ActionTileIcon
@@ -33,7 +33,7 @@ export function TaskList({ tasks, targets, specFor }: TaskListProps) {
               <p
                 className={cn(
                   "truncate pb-1 text-[11px]",
-                  task.status === "error" ? "text-red-400" : "text-neutral-300"
+                  task.status === "error" ? "text-red-400" : "text-neutral-300",
                 )}
               >
                 {task.status === "error"
@@ -65,8 +65,8 @@ export function TaskList({ tasks, targets, specFor }: TaskListProps) {
               <X className="size-3 text-neutral-300" />
             </button>
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

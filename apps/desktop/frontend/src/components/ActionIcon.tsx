@@ -1,5 +1,5 @@
-import { iconFor, tileStyleFor } from "@/lib/icons"
-import { cn } from "@/lib/utils"
+import { iconFor, tileStyleFor } from "@/lib/icons";
+import { cn } from "@/lib/utils";
 
 /**
  * An action's large borderless tile icon, Dropzone-style: a bundle PNG when
@@ -11,36 +11,26 @@ export function ActionTileIcon({
   icon,
   className,
 }: {
-  actionId: string
-  icon: string | undefined
-  className?: string
+  actionId: string;
+  icon: string | undefined;
+  className?: string;
 }) {
   if (icon?.startsWith("data:")) {
-    return (
-      <img src={icon} alt="" draggable={false} className={cn("object-contain", className)} />
-    )
+    return <img src={icon} alt="" draggable={false} className={cn("object-contain", className)} />;
   }
-  const { glyph: Glyph, shape } = tileStyleFor(actionId, icon ?? "file")
+  const { glyph: Glyph, shape } = tileStyleFor(actionId, icon ?? "file");
   return (
     <span className={cn("flex items-center justify-center shadow-sm", shape, className)}>
       <Glyph className="size-[55%] text-white" strokeWidth={1.9} />
     </span>
-  )
+  );
 }
 
 /** Small monochrome icon used in lists (e.g. the action catalogue). */
-export function ActionIcon({
-  icon,
-  className,
-}: {
-  icon: string | undefined
-  className?: string
-}) {
+export function ActionIcon({ icon, className }: { icon: string | undefined; className?: string }) {
   if (icon?.startsWith("data:")) {
-    return (
-      <img src={icon} alt="" draggable={false} className={cn("object-contain", className)} />
-    )
+    return <img src={icon} alt="" draggable={false} className={cn("object-contain", className)} />;
   }
-  const Icon = iconFor(icon ?? "file")
-  return <Icon className={cn("text-neutral-100", className)} strokeWidth={1.75} />
+  const Icon = iconFor(icon ?? "file");
+  return <Icon className={cn("text-neutral-100", className)} strokeWidth={1.75} />;
 }

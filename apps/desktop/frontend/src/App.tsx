@@ -1,59 +1,59 @@
-import { useEffect, useState } from "react"
-import { backend, events, uiScale } from "@/lib/backend"
-import { setUIScale } from "@/lib/dnd"
-import { useSettings } from "@/hooks/useBackend"
-import { ErrorBoundary } from "@/components/ErrorBoundary"
-import { PanelChrome } from "@/components/PanelChrome"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { PopoutBar } from "@/features/dropbar/PopoutBar"
-import { GridPanel } from "@/features/grid/GridPanel"
-import { Onboarding } from "@/features/onboarding/Onboarding"
-import { SettingsDialog } from "@/features/settings/SettingsDialog"
-import { InputRequestDialog } from "@/features/tasks/InputRequestDialog"
+import { useEffect, useState } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PanelChrome } from "@/components/PanelChrome";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { PopoutBar } from "@/features/dropbar/PopoutBar";
+import { GridPanel } from "@/features/grid/GridPanel";
+import { Onboarding } from "@/features/onboarding/Onboarding";
+import { SettingsDialog } from "@/features/settings/SettingsDialog";
+import { InputRequestDialog } from "@/features/tasks/InputRequestDialog";
+import { useSettings } from "@/hooks/useBackend";
+import { backend, events, uiScale } from "@/lib/backend";
+import { setUIScale } from "@/lib/dnd";
 
 function App() {
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [poppedOut, setPoppedOut] = useState(false)
-  const [settings, setSettings] = useSettings()
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [poppedOut, setPoppedOut] = useState(false);
+  const [settings, setSettings] = useSettings();
 
   // Show the first-run carousel until the user finishes or skips it.
-  const showOnboarding = settings != null && !settings.onboardingSeen && !poppedOut
+  const showOnboarding = settings != null && !settings.onboardingSeen && !poppedOut;
   const dismissOnboarding = () => {
-    if (settings) setSettings({ ...settings, onboardingSeen: true })
-  }
+    if (settings) setSettings({ ...settings, onboardingSeen: true });
+  };
 
   // Theme: "Always use dark mode" forces dark; otherwise follow the OS.
   // The class lives on <html> so portaled menus/dialogs inherit it.
   useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)")
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
-      const dark = settings?.theme === "dark" || media.matches
-      document.documentElement.classList.toggle("dark", dark)
-    }
-    apply()
-    media.addEventListener("change", apply)
-    return () => media.removeEventListener("change", apply)
-  }, [settings?.theme])
+      const dark = settings?.theme === "dark" || media.matches;
+      document.documentElement.classList.toggle("dark", dark);
+    };
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [settings?.theme]);
 
   // Grid size scales the whole UI; drop hit-testing needs the same factor.
-  const scale = uiScale(settings)
+  const scale = uiScale(settings);
   useEffect(() => {
-    setUIScale(scale)
-  }, [scale])
+    setUIScale(scale);
+  }, [scale]);
 
   useEffect(() => {
-    const offSettings = events.onOpenSettings(() => setSettingsOpen(true))
-    const offPopout = events.onDropBarPopOut(setPoppedOut)
+    const offSettings = events.onOpenSettings(() => setSettingsOpen(true));
+    const offPopout = events.onDropBarPopOut(setPoppedOut);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") backend.window.hide()
-    }
-    window.addEventListener("keydown", onKey)
+      if (e.key === "Escape") backend.window.hide();
+    };
+    window.addEventListener("keydown", onKey);
     return () => {
-      offSettings()
-      offPopout()
-      window.removeEventListener("keydown", onKey)
-    }
-  }, [])
+      offSettings();
+      offPopout();
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
 
   return (
     <div className="h-screen" style={{ zoom: scale }}>
@@ -73,7 +73,7 @@ function App() {
         </TooltipProvider>
       </ErrorBoundary>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
