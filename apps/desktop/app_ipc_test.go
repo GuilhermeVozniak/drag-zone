@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 
 	"dragzone/internal/ipc"
@@ -9,15 +10,30 @@ import (
 
 func TestHandleIPCListAndAdd(t *testing.T) {
 	app := newTestApp(t)
-	// The default grid seeds 6 targets.
-	if rows, err := app.handleIPC(ipc.Request{Cmd: "list"}); err != nil {
+	// list reports every seeded grid target. handleIPC returns a
+	// function-local named type, so a direct type assertion to an anonymous
+	// struct never matches (Go type identity) — round-trip through JSON instead.
+	rows, err := app.handleIPC(ipc.Request{Cmd: "list"})
+	if err != nil {
 		t.Fatalf("list: %v", err)
-	} else if rs, ok := rows.([]struct {
+	}
+	b, err := json.Marshal(rows)
+	if err != nil {
+		t.Fatalf("marshal list: %v", err)
+	}
+	var got []struct {
 		Label  string `json:"label"`
 		Action string `json:"action"`
 		Events string `json:"events"`
-	}); ok && len(rs) == 0 {
-		t.Error("list returned no rows")
+	}
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatalf("unmarshal list: %v", err)
+	}
+	if len(got) == 0 || len(got) != len(app.grid.List()) {
+		t.Fatalf("list returned %d rows, want %d (the seeded grid)", len(got), len(app.grid.List()))
+	}
+	if got[0].Label == "" || got[0].Action == "" {
+		t.Errorf("list row not populated: %+v", got[0])
 	}
 
 	// add two files individually.
