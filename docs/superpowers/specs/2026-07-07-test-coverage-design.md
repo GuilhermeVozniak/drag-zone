@@ -143,10 +143,33 @@ behavior and the backend calls each triggers, not internal structure.
 
 ## Verification
 
-All must be green:
-- `apps/desktop`: `wails build` (regenerates `frontend/dist` for the embed),
-  then `go test ./...`.
-- `bun run --filter=@dragzone/desktop-frontend test` (frontend vitest).
-- `bun run test` (web + shared vitest via turbo).
-- `gofmt -l .` prints nothing.
-- `bun run lint` (biome) clean.
+All must be green (✅ = confirmed on the final green-gate run, 2026-07-07):
+- [x] `apps/desktop`: `wails build` (regenerates `frontend/dist` for the embed),
+  then `go test ./...` — **15 packages pass**.
+- [x] `bun run --filter=@dragzone/desktop-frontend test` (frontend vitest) —
+  **18 files / 84 tests pass**.
+- [x] `bun run test` (web + shared vitest via turbo) — **4 tests pass**.
+- [x] `gofmt -l .` prints nothing.
+- [x] `cd apps/desktop/frontend && bunx tsc --noEmit` clean (test files excluded).
+- [x] `bun run lint` (biome) clean.
+
+## Outcome
+
+Delivered via `superpowers:subagent-driven-development` (one implementer +
+task-review per task on branch `test-coverage`):
+
+- **Go backend** — direct unit/integration tests for `model`, `storage`,
+  `config`, `ipc`, `actions/registry`, every builtin action
+  (clipboard/trash/airdrop/save-text/install-app/ftp + the five network
+  actions imgur/shorten/addons/s3/gdrive via injectable endpoints + httptest),
+  `bundles`, `tasks/runner`, the `App` facade (shares/dropbar/ipc), and the
+  `dz` CLI.
+- **Frontend** — new Vitest + jsdom + Testing Library harness with a manual
+  `@/lib/backend` mock; coverage of `lib/` (`cn`/`uiScale`/`dnd`/`icons`),
+  every hook, and the logic-bearing feature components.
+- **Bug found by the new tests:** `App.RecentShares()` returned `nil` (JSON
+  `null`) instead of `[]Share{}` when empty — fixed to guard on `len() == 0`.
+- **Small production seams** (behavior-preserving): injectable endpoint `var`s
+  for imgur/shorten/addons/gdrive, and an extracted `s3PublicURL` helper.
+- Native cgo, shadcn `components/ui/*`, and presentational wrappers remain out
+  of scope as planned.
