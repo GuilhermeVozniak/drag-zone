@@ -16,10 +16,12 @@
     "build": "turbo run build --filter=@dragzone/web",
     "lint": "turbo run lint --filter=@dragzone/web --filter=@dragzone/shared --filter=@dragzone/desktop-frontend",
     "test": "turbo run test --filter=@dragzone/web --filter=@dragzone/shared",
-    "dev": "turbo run dev --filter=@dragzone/web"
+    "dev": "turbo run dev --filter=@dragzone/web",
+    "prepare": "lefthook install"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",
+    "lefthook": "^2.1.9",
     "turbo": "^2.0.0",
     "typescript": "^5.8.0"
   }
