@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"sync"
 	"testing"
+	"time"
 
 	"dragzone/internal/ipc"
 	"dragzone/internal/model"
+	"dragzone/internal/tasks"
 )
 
 func TestHandleIPCListAndAdd(t *testing.T) {
@@ -73,6 +77,111 @@ func TestHandleIPCItemCommandsByIndex(t *testing.T) {
 	// bad index
 	if _, err := app.handleIPC(ipc.Request{Cmd: "remove", Args: []string{"99"}}); err == nil {
 		t.Error("out-of-range index should error")
+	}
+}
+
+// TestHandleIPCListItemsClearRemove covers the drop-bar-item IPC commands
+// that TestHandleIPCListAndAdd/TestHandleIPCItemCommandsByIndex don't reach:
+// "list-items" (round-trip through JSON, same reasoning as the "list" test:
+// handleIPC's dropBar.List() return type isn't the anonymous struct we assert
+// against), "remove" success (only the bad-index error path was covered
+// before), and "clear".
+func TestHandleIPCListItemsClearRemove(t *testing.T) {
+	app := newTestApp(t)
+	if _, err := app.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: []string{"/x/a.txt"}}); err != nil {
+		t.Fatalf("seed item 1: %v", err)
+	}
+	if _, err := app.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: []string{"/x/b.txt"}}); err != nil {
+		t.Fatalf("seed item 2: %v", err)
+	}
+
+	rows, err := app.handleIPC(ipc.Request{Cmd: "list-items"})
+	if err != nil {
+		t.Fatalf("list-items: %v", err)
+	}
+	b, err := json.Marshal(rows)
+	if err != nil {
+		t.Fatalf("marshal list-items: %v", err)
+	}
+	var got []struct {
+		Label string `json:"label"`
+	}
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatalf("unmarshal list-items: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("list-items returned %d rows, want 2", len(got))
+	}
+
+	// remove item 1 (1-based index): 2 items -> 1.
+	if _, err := app.handleIPC(ipc.Request{Cmd: "remove", Args: []string{"1"}}); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if n := len(app.dropBar.List()); n != 1 {
+		t.Fatalf("remove: %d items remain, want 1", n)
+	}
+
+	// clear empties whatever is left.
+	if _, err := app.handleIPC(ipc.Request{Cmd: "clear"}); err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	if n := len(app.dropBar.List()); n != 0 {
+		t.Fatalf("clear: %d items remain, want 0", n)
+	}
+}
+
+// TestHandleIPCRunSuccess exercises the "run" command's success path via
+// ipcRun: it matches the seeded "Clipboard" grid target (action
+// copy-to-clipboard, see app.go's default grid) by label, requires a
+// dragged/clicked event, and dispatches through the async runner (see
+// app_grid.go trigger -> runner.Run). Following app_flow_test.go's pattern,
+// a.ctx is seeded to context.Background() (trigger's parent context; startup
+// normally supplies it from Wails) and a.onEmit is set before the call so
+// a.emit (app.go) doesn't fall through to the real Wails runtime, which
+// would abort the test process given the bare background context. Completion
+// is awaited via tasks:changed rather than assumed synchronous.
+func TestHandleIPCRunSuccess(t *testing.T) {
+	app := newTestApp(t)
+	app.ctx = context.Background()
+
+	var mu sync.Mutex
+	done := make(chan struct{})
+	var closeOnce sync.Once
+	app.onEmit = func(ev string, data ...any) {
+		if ev != tasks.EventTasksChanged {
+			return
+		}
+		states, ok := data[0].([]model.TaskState)
+		if !ok || len(states) == 0 {
+			return
+		}
+		if states[0].Status == model.TaskDone || states[0].Status == model.TaskError {
+			mu.Lock()
+			defer mu.Unlock()
+			closeOnce.Do(func() { close(done) })
+		}
+	}
+
+	res, err := app.handleIPC(ipc.Request{Cmd: "run", Args: []string{"Clipboard", "dragged", "/tmp/x.txt"}})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if res == nil {
+		t.Error("run: expected a non-nil result message")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("no tasks:changed emitted for task completion")
+	}
+
+	taskList := app.Tasks()
+	if len(taskList) == 0 {
+		t.Fatal("run: expected at least one task to be created")
+	}
+	if taskList[0].Status != model.TaskDone {
+		t.Errorf("run: task status = %v, want %v (error %q)", taskList[0].Status, model.TaskDone, taskList[0].Error)
 	}
 }
 
