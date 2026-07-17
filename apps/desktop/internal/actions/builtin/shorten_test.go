@@ -2,6 +2,8 @@ package builtin
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -70,5 +72,123 @@ func TestShortenServerErrorPropagates(t *testing.T) {
 		Progress: nullProgress{}, Services: &recServices{},
 	}); err == nil {
 		t.Error("500 from tinyurl should error")
+	}
+}
+
+func TestShortenURLSpec(t *testing.T) {
+	spec := ShortenURL{}.Spec()
+	if spec.ID != "shorten-url" {
+		t.Errorf("ID = %q", spec.ID)
+	}
+	if len(spec.Events) != 2 || spec.Events[0] != model.EventDragged || spec.Events[1] != model.EventClicked {
+		t.Errorf("Events = %v", spec.Events)
+	}
+	if len(spec.Accepts) != 2 || spec.Accepts[0] != model.ItemURL || spec.Accepts[1] != model.ItemText {
+		t.Errorf("Accepts = %v", spec.Accepts)
+	}
+}
+
+func TestShortenDroppedEmptyInputErrors(t *testing.T) {
+	svc := &recServices{}
+	if _, err := (ShortenURL{}).Dropped(context.Background(), actions.Invocation{
+		Payload:  model.Payload{Kind: model.ItemText, Text: "   "},
+		Progress: nullProgress{}, Services: svc,
+	}); err == nil {
+		t.Error("empty payload text should error")
+	}
+	if svc.Clipboard != "" {
+		t.Errorf("clipboard should be untouched, got %q", svc.Clipboard)
+	}
+}
+
+func TestShortenClickedEmptyClipboardErrors(t *testing.T) {
+	svc := &recServices{ReadClip: ""}
+	if _, err := (ShortenURL{}).Clicked(context.Background(), actions.Invocation{
+		Progress: nullProgress{}, Services: svc,
+	}); err == nil {
+		t.Error("empty clipboard should error")
+	}
+}
+
+func TestShortenDroppedMalformedURLErrors(t *testing.T) {
+	// Fails net/url.Parse itself (invalid percent-escape), exercising the
+	// url.Parse error branch of parseHTTPURL rather than the scheme/host checks.
+	if _, err := (ShortenURL{}).Dropped(context.Background(), actions.Invocation{
+		Payload:  model.Payload{Kind: model.ItemURL, Text: "http://a.com/%zz"},
+		Progress: nullProgress{}, Services: &recServices{},
+	}); err == nil {
+		t.Error("malformed URL should error")
+	}
+}
+
+func TestShortenAndCopyClipboardWriteErrorWrapped(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("https://tinyurl.com/abc"))
+	}))
+	defer ts.Close()
+	old := tinyURLAPI
+	tinyURLAPI = ts.URL
+	defer func() { tinyURLAPI = old }()
+
+	svc := &recServices{ClipboardErr: fmt.Errorf("clip locked")}
+	_, err := (ShortenURL{}).Dropped(context.Background(), actions.Invocation{
+		Payload:  model.Payload{Kind: model.ItemURL, Text: "https://example.com"},
+		Progress: nullProgress{}, Services: svc,
+	})
+	if err == nil {
+		t.Fatal("clipboard write failure should error")
+	}
+	if !errors.Is(err, svc.ClipboardErr) {
+		t.Errorf("error should wrap clipboard err, got %v", err)
+	}
+}
+
+func TestShortenWithTinyURLEmptyResponseErrors(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 200 OK with an empty body.
+	}))
+	defer ts.Close()
+	old := tinyURLAPI
+	tinyURLAPI = ts.URL
+	defer func() { tinyURLAPI = old }()
+
+	if _, err := (ShortenURL{}).Dropped(context.Background(), actions.Invocation{
+		Payload:  model.Payload{Kind: model.ItemURL, Text: "https://example.com"},
+		Progress: nullProgress{}, Services: &recServices{},
+	}); err == nil {
+		t.Error("empty tinyurl response should error")
+	}
+}
+
+func TestShortenWithTinyURLRequestCreationErrorWrapped(t *testing.T) {
+	// A control character in the endpoint makes http.NewRequestWithContext's
+	// internal URL parse fail, exercising that error branch deterministically
+	// (no network I/O at all).
+	old := tinyURLAPI
+	tinyURLAPI = "http://\x7f"
+	defer func() { tinyURLAPI = old }()
+
+	if _, err := (ShortenURL{}).Dropped(context.Background(), actions.Invocation{
+		Payload:  model.Payload{Kind: model.ItemURL, Text: "https://example.com"},
+		Progress: nullProgress{}, Services: &recServices{},
+	}); err == nil {
+		t.Error("malformed endpoint should error")
+	}
+}
+
+func TestShortenWithTinyURLConnectionErrorWrapped(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	unreachable := ts.URL
+	ts.Close() // closed before use: connection refused, no live network involved
+
+	old := tinyURLAPI
+	tinyURLAPI = unreachable
+	defer func() { tinyURLAPI = old }()
+
+	if _, err := (ShortenURL{}).Dropped(context.Background(), actions.Invocation{
+		Payload:  model.Payload{Kind: model.ItemURL, Text: "https://example.com"},
+		Progress: nullProgress{}, Services: &recServices{},
+	}); err == nil {
+		t.Error("connection failure should error")
 	}
 }
