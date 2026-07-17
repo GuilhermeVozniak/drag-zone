@@ -72,6 +72,38 @@ git add docs/EXPLORATION-2026-07-18.md docs/exploration-assets
 git commit -m "docs: live exploration report + discovery findings"
 ```
 
+### Task 1.1: Update check handles 404 (no releases) gracefully  [DISCOVERY BUG-1]
+
+**Files:**
+- Modify: `apps/desktop/app_settings.go` (`checkForUpdates`)
+- Test: `apps/desktop/app_settings_test.go`
+
+**Context:** Exploration found the Updates tab shows a raw `Error: checking for updates: 404 Not Found`. GitHub's `/releases/latest` returns 404 when a repo has no published full release. A 404 should be reported as “no update available” (up to date), not an error.
+
+- [ ] **Step 1: Write the failing test** — httptest server returns `http.StatusNotFound`; assert `checkForUpdates(ts.URL)` returns `(UpdateInfo{Available:false, Version: appVersion}, nil)` (no error).
+
+```go
+func TestCheckForUpdates404IsUpToDate(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"message":"Not Found"}`, http.StatusNotFound)
+	}))
+	defer ts.Close()
+	app := newTestApp(t)
+	info, err := app.checkForUpdates(ts.URL)
+	if err != nil {
+		t.Fatalf("404 should not be an error, got %v", err)
+	}
+	if info.Available {
+		t.Error("404 (no releases) must report no update available")
+	}
+}
+```
+
+- [ ] **Step 2: Run — expect FAIL** (`go test . -run TestCheckForUpdates404`, needs `wails build` first on a clean tree).
+- [ ] **Step 3: Implement** — in `checkForUpdates`, after the HTTP GET, special-case `resp.StatusCode == http.StatusNotFound`: return the zero-update `info` (Available=false) and `nil` error, before the generic non-200 error branch.
+- [ ] **Step 4: Run — expect PASS**, and the existing `TestCheckForUpdates*` stay green.
+- [ ] **Step 5: Commit** — `fix(updates): treat GitHub 404 (no releases) as up-to-date, not an error`.
+
 ---
 
 ## Stream 2 — App-facade flow tests
