@@ -28,16 +28,18 @@ import (
 // footprint at golang.org/x/oauth2 alone.
 const (
 	driveAuthURL     = "https://accounts.google.com/o/oauth2/auth"
-	driveTokenURL    = "https://oauth2.googleapis.com/token"
 	driveScope       = "https://www.googleapis.com/auth/drive.file"
-	driveUploadURL   = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
 	driveAuthWait    = 3 * time.Minute // how long to wait for the browser consent callback
 	driveHTTPTimeout = 60 * time.Second
 )
 
-// driveFilesURL is a var (not const) so tests can point it at an httptest
-// server.
-var driveFilesURL = "https://www.googleapis.com/drive/v3/files/"
+// driveTokenURL, driveUploadURL and driveFilesURL are vars (not consts) so
+// tests can point them at an httptest server instead of the real Google APIs.
+var (
+	driveTokenURL  = "https://oauth2.googleapis.com/token"
+	driveUploadURL = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+	driveFilesURL  = "https://www.googleapis.com/drive/v3/files/"
+)
 
 // GoogleDriveUpload uploads dropped files and folders to Google Drive and
 // copies the web link of the first uploaded file to the clipboard.
