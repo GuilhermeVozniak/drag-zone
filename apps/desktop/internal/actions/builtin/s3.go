@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -16,6 +17,13 @@ import (
 	"dragzone/internal/actions"
 	"dragzone/internal/model"
 )
+
+// s3EndpointOverride, when non-empty, replaces the region-derived S3 host
+// with a custom base endpoint (path-style addressing). It exists solely so
+// tests can point the client at an httptest.Server; production code never
+// sets it, so the default (empty) behavior — the real region endpoint via
+// virtual-hosted-style addressing — is unchanged.
+var s3EndpointOverride string
 
 // S3Upload uploads dropped files and folders to an Amazon S3 bucket and
 // copies the public URL of the first file to the clipboard.
@@ -54,7 +62,19 @@ func (S3Upload) Dropped(ctx context.Context, inv actions.Invocation) (actions.Re
 		return actions.Result{}, fmt.Errorf("nothing to upload")
 	}
 
-	entries, total, err := collectUploadEntries(inv.Payload.Paths)
+	// Holding Option zips the drop into a single archive before upload, like
+	// Dropzone's S3 and FTP actions.
+	paths := inv.Payload.Paths
+	if inv.Payload.HasModifier("Option") {
+		zipPath, zipDir, err := zipForUpload(paths)
+		if err != nil {
+			return actions.Result{}, fmt.Errorf("zipping before upload: %w", err)
+		}
+		defer os.RemoveAll(zipDir)
+		paths = []string{zipPath}
+	}
+
+	entries, total, err := collectUploadEntries(paths)
 	if err != nil {
 		return actions.Result{}, err
 	}
@@ -66,7 +86,13 @@ func (S3Upload) Dropped(ctx context.Context, inv actions.Invocation) (actions.Re
 	if err != nil {
 		return actions.Result{}, fmt.Errorf("configuring AWS client: %w", err)
 	}
-	uploader := manager.NewUploader(s3.NewFromConfig(cfg))
+	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
+		if s3EndpointOverride != "" {
+			o.BaseEndpoint = aws.String(s3EndpointOverride)
+			o.UsePathStyle = true
+		}
+	})
+	uploader := manager.NewUploader(client)
 
 	keyPrefix := inv.Target.Option("key_prefix", "")
 	var done int64
@@ -111,6 +137,27 @@ func s3UploadOne(ctx context.Context, uploader *manager.Uploader, bucket, key st
 		Body:   body,
 	})
 	return err
+}
+
+// zipForUpload archives paths into a single .zip file inside a fresh
+// temporary directory (so the resulting file name stays clean, e.g.
+// "photos.zip" rather than a randomized name) and returns its path plus the
+// directory to clean up afterward.
+func zipForUpload(paths []string) (zipPath, tmpDir string, err error) {
+	tmpDir, err = os.MkdirTemp("", "dragzone-s3-zip-*")
+	if err != nil {
+		return "", "", err
+	}
+	name := strings.TrimSuffix(filepath.Base(paths[0]), filepath.Ext(paths[0]))
+	if len(paths) > 1 {
+		name = "Archive"
+	}
+	zipPath = filepath.Join(tmpDir, name+".zip")
+	if err := writeZip(zipPath, paths, func(int64) {}); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", "", err
+	}
+	return zipPath, tmpDir, nil
 }
 
 // s3PublicURL builds the URL copied to the clipboard: the custom prefix when
