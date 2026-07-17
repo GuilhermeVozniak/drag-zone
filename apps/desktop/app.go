@@ -65,6 +65,10 @@ type App struct {
 	inputMu   sync.Mutex
 	inputReqs map[string]chan inputAnswer
 
+	// onEmit, when non-nil, receives every emit() call instead of
+	// runtime.EventsEmit. Flow tests set it to a recorder.
+	onEmit func(event string, data ...any)
+
 	taskMu       sync.Mutex
 	runningTasks int
 	recentShares []Share
@@ -254,6 +258,10 @@ func (a *App) shutdown(_ context.Context) {
 
 // emit publishes an event to the frontend; safe to call before startup.
 func (a *App) emit(event string, data ...any) {
+	if a.onEmit != nil {
+		a.onEmit(event, data...)
+		return
+	}
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, event, data...)
 	}
