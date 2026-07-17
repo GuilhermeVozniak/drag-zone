@@ -255,7 +255,8 @@ General pattern (already established in `imgur_test.go`): point the action's pac
 **Files:** Modify: `ftp_test.go`; read `ftp.go`.
 
 - [ ] **Step 1:** Cover the non-network logic: missing host/user/pass → error; `url_prefix` result construction + clipboard; protocol dispatch (`ftp` vs `sftp`) selects the right dialer and a dial failure is `%w`-wrapped. Do **not** stand up a live FTP/SFTP server (network constraint) — assert via a seam or the fast error paths.
-- [ ] **Step 2–4:** FAIL→green→commit `test(ftp): config/url_prefix/dispatch coverage`.
+- [ ] **Step 1b (FEATURE — per user decision 2026-07-18):** ADD Option-drop-zips-first to FTP for parity consistency with S3. Mirror `s3.go`'s pattern exactly: `if inv.Payload.HasModifier("Option") { zip via the shared zipForUpload helper; defer cleanup; upload the single .zip }`, placed before the existing entry collection. Reuse the SAME `zipForUpload` helper introduced in s3.go (Task 8) — do not duplicate it; if it's unexported in package builtin it's already reachable. Test it: an Option payload uploads exactly one `.zip` (assert via the seam/entry list without a live server). Default (non-Option) path must be unchanged.
+- [ ] **Step 2–4:** FAIL→green→commit `test(ftp): config/url_prefix/dispatch coverage + feat: Option-zip-first parity`.
 
 ### Task 11: Folder action — conflict resolution + Option-invert
 
