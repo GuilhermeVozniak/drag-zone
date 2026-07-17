@@ -65,6 +65,24 @@ func TestCheckForUpdates(t *testing.T) {
 	}
 }
 
+// TestCheckForUpdates404IsUpToDate covers repos with no published releases:
+// GitHub's releases/latest returns 404, which must be reported as up to date,
+// not as an error.
+func TestCheckForUpdates404IsUpToDate(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"message":"Not Found"}`, http.StatusNotFound)
+	}))
+	defer ts.Close()
+	app := newTestApp(t)
+	info, err := app.checkForUpdates(ts.URL)
+	if err != nil {
+		t.Fatalf("404 should not be an error, got %v", err)
+	}
+	if info.Available {
+		t.Error("404 (no releases) must report no update available")
+	}
+}
+
 // TestCheckForUpdatesUpToDate covers the no-update path: same version.
 func TestCheckForUpdatesUpToDate(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
