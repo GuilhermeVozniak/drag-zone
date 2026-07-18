@@ -56,7 +56,7 @@ function App() {
   }, []);
 
   return (
-    <div className="h-screen" style={{ zoom: scale }}>
+    <div style={{ zoom: scale }}>
       <ErrorBoundary>
         <TooltipProvider delayDuration={400}>
           <PanelChrome>

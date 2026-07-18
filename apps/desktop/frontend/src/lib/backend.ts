@@ -101,6 +101,7 @@ export const backend = {
     hide: App.HideWindow,
     quit: App.Quit,
     about: App.About,
+    resize: App.ResizeWindow,
   },
 };
 

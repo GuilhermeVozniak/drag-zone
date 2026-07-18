@@ -46,8 +46,13 @@ func (a *App) applySettings(s config.Settings) {
 	platform.SetHotkeyF(parseFKey(s.PopOutShortcut), platform.HotkeySlotPopOut)
 	platform.SetDragOverlayEnabled(s.DragOverlay)
 	if a.ctx != nil {
+		// Width scales with the grid-size setting; height is owned by the
+		// frontend's content-driven auto-resize (see ResizeWindow), so it is
+		// preserved here rather than reset to the small startup default —
+		// otherwise every settings save would collapse the window.
 		scale := s.Scale()
-		runtime.WindowSetSize(a.ctx, int(float64(windowWidth)*scale), int(float64(windowHeight)*scale))
+		_, height := runtime.WindowGetSize(a.ctx)
+		runtime.WindowSetSize(a.ctx, int(float64(windowWidth)*scale), height)
 	}
 }
 
@@ -114,6 +119,21 @@ func (a *App) HideWindow() {
 
 func (a *App) ShowWindow() {
 	platform.ShowGrid(true)
+}
+
+// ResizeWindow fits the window to the frontend's measured content height,
+// called by the panel's ResizeObserver (see useAutoResize.ts) whenever its
+// natural height changes. The width stays fixed at windowWidth; only the
+// height grows/shrinks to the content, clamped to a sane range.
+func (a *App) ResizeWindow(height int) {
+	const minH, maxH = 120, 640
+	if height < minH {
+		height = minH
+	}
+	if height > maxH {
+		height = maxH
+	}
+	runtime.WindowSetSize(a.ctx, windowWidth, height)
 }
 
 func (a *App) Quit() {

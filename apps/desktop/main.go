@@ -16,8 +16,8 @@ import (
 var assets embed.FS
 
 const (
-	windowWidth  = 420
-	windowHeight = 560
+	windowWidth  = 360
+	windowHeight = 160 // small starting height; the frontend resizes it to fit content
 )
 
 // appVersion is shown in the Updates tab. Release builds inject the git tag
