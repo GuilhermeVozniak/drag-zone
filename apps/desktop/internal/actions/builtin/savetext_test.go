@@ -11,6 +11,19 @@ import (
 	"dragzone/internal/model"
 )
 
+func TestSaveTextSpec(t *testing.T) {
+	spec := SaveText{}.Spec()
+	if spec.ID != "save-text" {
+		t.Errorf("ID = %q", spec.ID)
+	}
+	if len(spec.Accepts) != 2 || spec.Accepts[0] != model.ItemText || spec.Accepts[1] != model.ItemURL {
+		t.Errorf("Accepts = %+v", spec.Accepts)
+	}
+	if len(spec.Options) != 1 || spec.Options[0].Key != "path" || !spec.Options[0].Required {
+		t.Errorf("Options = %+v", spec.Options)
+	}
+}
+
 func TestSnippetName(t *testing.T) {
 	if got := snippetName("Hello there world"); got != "Hello there world.txt" {
 		t.Errorf("snippetName = %q", got)
@@ -62,5 +75,22 @@ func TestSaveTextRejectsEmptyConfigOrText(t *testing.T) {
 		Progress: nullProgress{},
 	}); err == nil {
 		t.Error("blank text should error")
+	}
+}
+
+func TestSaveTextDroppedWriteFailure(t *testing.T) {
+	// A folder option pointing at a non-existent directory makes the
+	// underlying os.WriteFile fail, exercising the wrapped-error branch.
+	missing := filepath.Join(t.TempDir(), "does-not-exist")
+	_, err := (SaveText{}).Dropped(context.Background(), actions.Invocation{
+		Target:   model.Target{Options: map[string]string{"path": missing}},
+		Payload:  model.Payload{Kind: model.ItemText, Text: "hello"},
+		Progress: nullProgress{},
+	})
+	if err == nil {
+		t.Fatal("expected an error when the destination folder does not exist")
+	}
+	if !strings.Contains(err.Error(), "saving text") {
+		t.Errorf("error = %q, want it to mention %q", err.Error(), "saving text")
 	}
 }
