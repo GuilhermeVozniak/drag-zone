@@ -12,6 +12,15 @@ import (
 	"dragzone/internal/model"
 )
 
+// runCmd executes an external command and returns its standard output. It is
+// a package variable purely as a test seam: tests substitute a fake to cover
+// the mount/copy/launch/eject/trash sequence without invoking real
+// hdiutil/ditto/open. The default is behavior-identical to calling
+// exec.CommandContext(ctx, name, args...).Output() directly.
+var runCmd = func(ctx context.Context, name string, args ...string) ([]byte, error) {
+	return exec.CommandContext(ctx, name, args...).Output()
+}
+
 // InstallApp installs a dropped .dmg or .zip: mounts/extracts it, copies the
 // contained .app to /Applications, launches it, and cleans up.
 type InstallApp struct{}
@@ -50,7 +59,7 @@ func (InstallApp) Dropped(ctx context.Context, inv actions.Invocation) (actions.
 
 	inv.Progress.Detail("Launching " + appName)
 	installed := filepath.Join("/Applications", appName)
-	if err := exec.CommandContext(ctx, "open", installed).Run(); err != nil {
+	if _, err := runCmd(ctx, "open", installed); err != nil {
 		return actions.Result{}, fmt.Errorf("launching %s: %w", appName, err)
 	}
 	if err := inv.Services.Trash([]string{src}); err == nil {
@@ -61,7 +70,7 @@ func (InstallApp) Dropped(ctx context.Context, inv actions.Invocation) (actions.
 
 func installFromDMG(ctx context.Context, dmg string, progress actions.Progress) (string, error) {
 	progress.Detail("Mounting disk image")
-	out, err := exec.CommandContext(ctx, "hdiutil", "attach", "-nobrowse", "-readonly", "-plist", dmg).Output()
+	out, err := runCmd(ctx, "hdiutil", "attach", "-nobrowse", "-readonly", "-plist", dmg)
 	if err != nil {
 		return "", fmt.Errorf("mounting %s: %w", filepath.Base(dmg), err)
 	}
@@ -69,7 +78,10 @@ func installFromDMG(ctx context.Context, dmg string, progress actions.Progress) 
 	if mount == "" {
 		return "", fmt.Errorf("could not find mount point for %s", filepath.Base(dmg))
 	}
-	defer func() { _ = exec.Command("hdiutil", "detach", "-quiet", mount).Run() }()
+	// Detach uses a background context (not ctx) so cleanup still runs even
+	// if the invocation's context is done, matching the prior exec.Command
+	// (no context) behavior.
+	defer func() { _, _ = runCmd(context.Background(), "hdiutil", "detach", "-quiet", mount) }()
 
 	app, err := findApp(mount)
 	if err != nil {
@@ -86,7 +98,7 @@ func installFromZip(ctx context.Context, zipPath string, progress actions.Progre
 	}
 	defer os.RemoveAll(tmp)
 
-	if err := exec.CommandContext(ctx, "ditto", "-x", "-k", zipPath, tmp).Run(); err != nil {
+	if _, err := runCmd(ctx, "ditto", "-x", "-k", zipPath, tmp); err != nil {
 		return "", fmt.Errorf("extracting %s: %w", filepath.Base(zipPath), err)
 	}
 	app, err := findApp(tmp)
@@ -146,7 +158,7 @@ func copyAppToApplications(ctx context.Context, app string, progress actions.Pro
 			return "", fmt.Errorf("replacing existing %s: %w", name, err)
 		}
 	}
-	if err := exec.CommandContext(ctx, "ditto", app, dst).Run(); err != nil {
+	if _, err := runCmd(ctx, "ditto", app, dst); err != nil {
 		return "", fmt.Errorf("copying %s to /Applications: %w", name, err)
 	}
 	return name, nil
