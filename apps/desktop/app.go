@@ -41,6 +41,7 @@ const (
 	EventWindowBeak       = "window:beak"
 	EventSharesChanged    = "shares:changed"
 	EventDragActive       = "drag:active"
+	EventDropBarDragEnded = "dropbar:dragended"
 )
 
 // App wires the subsystems together and is the bindings facade exposed to the
@@ -224,6 +225,12 @@ func (a *App) startup(ctx context.Context) {
 			if completed && itemID != "" {
 				_ = a.DropBarConsume(itemID)
 			}
+			// Tell the frontend the native drag-out session is over no
+			// matter how it ended (dropped on a sibling tile, dropped
+			// outside the window onto Finder, or cancelled), so it can clear
+			// its in-flight drag-source tracker (lib/dnd.ts) and a later,
+			// unrelated drop can never misread a stale source as a combine.
+			a.emit(EventDropBarDragEnded)
 		},
 		OpenSettings: func() {
 			a.emit(EventOpenSettings)

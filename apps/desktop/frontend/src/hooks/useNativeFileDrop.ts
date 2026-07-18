@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { backend, type DropBarItem } from "@/lib/backend";
+import { backend, type DropBarItem, events } from "@/lib/backend";
 import { getDraggingDropBarItem, initNativeFileDrop, setDraggingDropBarItem } from "@/lib/dnd";
 
 /**
@@ -19,6 +19,20 @@ export function useNativeFileDrop(dropBarItems: DropBarItem[] = []) {
   useEffect(() => {
     initNativeFileDrop({
       onFiles(dropId, paths) {
+        // Capture the in-flight drag-out source (if any) and clear the
+        // global immediately, before any branching below, so it is valid
+        // for at most this one drop. Without this, a drag-out that resolves
+        // anywhere other than a sibling Drop Bar tile — Finder (the common
+        // case: OnFileDrop never fires for out-of-window drops), the Drop
+        // Bar background, add-to-grid, a grid target, or a cancelled drag —
+        // would leave the tracker set, and a later unrelated drop onto a
+        // Drop Bar tile would misread it as "combine stale source into this
+        // tile", discarding the newly dropped file. See also the
+        // drag-session-end subscription below, which clears the tracker
+        // even when no drop ever lands (out-of-window drops, cancels).
+        const sourceId = getDraggingDropBarItem();
+        setDraggingDropBarItem(null);
+
         if (!dropId || paths.length === 0) return;
         backend.playDropSound();
         if (dropId === "dropbar") {
@@ -31,10 +45,6 @@ export function useNativeFileDrop(dropBarItems: DropBarItem[] = []) {
         }
         const isDropBarItem = itemsRef.current.some((item) => item.id === dropId);
         if (isDropBarItem) {
-          // Consume the in-flight drag-out source (if any) so a stale value
-          // can't leak into an unrelated later drop.
-          const sourceId = getDraggingDropBarItem();
-          setDraggingDropBarItem(null);
           if (sourceId && sourceId !== dropId) {
             backend.dropBar.combine(dropId, sourceId);
           } else {
@@ -50,5 +60,10 @@ export function useNativeFileDrop(dropBarItems: DropBarItem[] = []) {
         backend.window.hide();
       },
     });
+    // Belt-and-suspenders: the Go side emits this after every drag-out
+    // session ends, whatever the outcome, so the tracker never survives a
+    // drag that resolves without ever reaching onFiles above (e.g. dropped
+    // outside the window onto Finder, or cancelled).
+    return events.onDropBarDragEnded(() => setDraggingDropBarItem(null));
   }, []);
 }

@@ -126,4 +126,10 @@ export const events = {
    * monitor in bridge_darwin.m, not HTML5 dragenter/dragover — those don't
    * reliably fire for native file drags in a Wails WKWebView. */
   onDragActive: (fn: (active: boolean) => void) => EventsOn("drag:active", fn),
+  /** A Drop Bar item's native drag-out session finished, whatever the
+   * outcome (dropped on a sibling tile, dropped outside the window, or
+   * cancelled). useNativeFileDrop clears its in-flight drag-source tracker
+   * on this signal so a stale id can never leak into a later, unrelated
+   * drop. */
+  onDropBarDragEnded: (fn: () => void) => EventsOn("dropbar:dragended", fn),
 };

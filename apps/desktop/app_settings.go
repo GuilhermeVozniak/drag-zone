@@ -123,8 +123,11 @@ func (a *App) ShowWindow() {
 
 // ResizeWindow fits the window to the frontend's measured content height,
 // called by the panel's ResizeObserver (see useAutoResize.ts) whenever its
-// natural height changes. The width stays fixed at windowWidth; only the
-// height grows/shrinks to the content, clamped to a sane range.
+// natural height changes. Width is owned by the grid-size setting (see
+// applySettings, which scales it) and is preserved here rather than reset to
+// the windowWidth constant — otherwise every auto-resize would revert a
+// non-default grid size's width scaling. Only the height grows/shrinks to
+// the content, clamped to a sane range.
 func (a *App) ResizeWindow(height int) {
 	const minH, maxH = 120, 640
 	if height < minH {
@@ -133,7 +136,8 @@ func (a *App) ResizeWindow(height int) {
 	if height > maxH {
 		height = maxH
 	}
-	runtime.WindowSetSize(a.ctx, windowWidth, height)
+	width, _ := runtime.WindowGetSize(a.ctx)
+	runtime.WindowSetSize(a.ctx, width, height)
 }
 
 func (a *App) Quit() {

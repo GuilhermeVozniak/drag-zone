@@ -75,6 +75,7 @@ export const events = {
   onWindowBeak: sub("window:beak"),
   onSharesChanged: sub("shares:changed"),
   onDragActive: sub("drag:active"),
+  onDropBarDragEnded: sub("dropbar:dragended"),
 };
 
 // --- test helpers ---
