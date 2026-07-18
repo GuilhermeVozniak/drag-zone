@@ -24,6 +24,7 @@ import {
   Minimize2,
   NotebookPen,
   PackageOpen,
+  Pencil,
   Printer,
   Route,
   ScrollText,
@@ -55,6 +56,7 @@ const byName: Record<string, LucideIcon> = {
   "minimize-2": Minimize2,
   "notebook-pen": NotebookPen,
   "package-open": PackageOpen,
+  pencil: Pencil,
   printer: Printer,
   route: Route,
   "scroll-text": ScrollText,
@@ -171,6 +173,10 @@ const tileStyles: Record<string, TileStyle> = {
   "merge-pdfs": {
     glyph: FileStack,
     shape: "rounded-[14px] bg-gradient-to-b from-red-400 to-rose-600",
+  },
+  annotate: {
+    glyph: Pencil,
+    shape: "rounded-[14px] bg-gradient-to-b from-orange-400 to-rose-500",
   },
 };
 

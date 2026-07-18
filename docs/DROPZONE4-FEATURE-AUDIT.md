@@ -41,11 +41,12 @@ comparison screenshots) against DragZone as shipped in **v0.7.4**. Legend:
 | Move to Trash | ✓ | recoverable |
 | Merge PDFs | ✓ | pure-Go pdfcpu, page-count verified |
 | Unzip Files | ✓ | archive/zip, Zip-Slip-guarded, keeps original |
-| Annotate with CleanShot X | ✗ | requires the third-party CleanShot X app installed — not bundleable |
+| Annotate with CleanShot X | ✓ | v0.7.8: native `annotate` action opens dropped images in CleanShot X via its `cleanshot://open-annotate` URL scheme — identical to Dropzone 4, which also delegates annotation to CleanShot X (both require it installed; a clear message is shown if it isn't) |
 | ~50 community `.dzbundle` add-ons | ✓ | DragZone hosts real `.dzbundle`s (Ruby/Python `$dz` protocol) + installs from the live aptonic repo |
 
-**Result: every Dropzone 4 action is reproduced except the one that hard-depends
-on a separate paid third-party app (CleanShot X).**
+**Result: every Dropzone 4 action is reproduced (32 built-in actions). The one
+that delegates to a third-party app — Annotate with CleanShot X — now does so
+identically to Dropzone 4 (both invoke CleanShot X and require it installed).**
 
 ## B. Core UX & window
 
@@ -96,7 +97,7 @@ on a separate paid third-party app (CleanShot X).**
 1. **Screenshot pixel-capture needs the user's one-time Screen Recording grant.** macOS gates all screen capture behind an interactive TCC permission that no program (DragZone, Dropzone, or an autonomous agent) can self-approve. As of v0.7.5 the Screenshot actions detect the missing grant (`CGPreflightScreenCaptureAccess`), fire the OS Allow/Deny prompt (`CGRequestScreenCaptureAccess`) instead of silently failing, and return a clear "Screen Recording permission is required" message — exactly Dropzone 4's behavior. The action's logic is unit-tested and its Drop-Bar delivery verified live; the pixel-grab lights up once the user clicks Allow. **The grant itself is not automatable by design.**
 2. **Native "feel" polish** — the exact animation of window resize, drag-out, and the overlay during a real Finder drag is native-runtime and best eyeballed on a Mac (like every native feature, and like Dropzone's own).
 3. **Pixel-exact visual match** — compact size, corners, and tile density are matched (v0.7.2–0.7.3); finer per-pixel tuning (exact tile sizes/spacing/colors vs a given screenshot) is an iterate-from-comparison process.
-4. **CleanShot X annotate action** — depends on a separate paid third-party app.
+4. **CleanShot X annotate action** — implemented as of v0.7.8 (delegates to CleanShot X exactly as Dropzone 4 does); it still requires the user to have CleanShot X installed, which is Dropzone's behavior too, not a DragZone gap.
 5. **Second literal always-on-top window** — Wails v2 is single-window; the floating pop-out achieves the behavior by elevating the one window (documented deviation).
 
 **Bottom line:** feature and action parity with Dropzone 4 is complete and

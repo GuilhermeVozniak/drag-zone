@@ -36,4 +36,5 @@ func RegisterAll(reg *actions.Registry) {
 	reg.Register(FlickrUpload{})
 	reg.Register(Unzip{})
 	reg.Register(MergePDFs{})
+	reg.Register(Annotate{})
 }
