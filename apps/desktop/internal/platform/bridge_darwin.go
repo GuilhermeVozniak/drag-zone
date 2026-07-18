@@ -162,6 +162,10 @@ func OptionKeyDown() bool { return bool(C.dz_option_key_down()) }
 // the popped-out Drop Bar mode.
 func SetPinned(pinned bool) { C.dz_set_pinned(C.bool(pinned)) }
 
+// SetPopoutFloating toggles the popped-out Drop Bar's floating, always-on-top
+// window behavior and position memory across launches.
+func SetPopoutFloating(on bool) { C.dz_set_popout_floating(C.bool(on)) }
+
 // StripImageMetadata rewrites src to dst without EXIF/GPS/TIFF/IPTC metadata.
 func StripImageMetadata(src, dst string) error {
 	cs, cd := C.CString(src), C.CString(dst)

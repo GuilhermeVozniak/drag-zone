@@ -75,6 +75,7 @@ func (a *App) SetDropBarPopOut(popped bool) error {
 	a.poppedOut = popped
 	a.dragMu.Unlock()
 	platform.SetPinned(popped)
+	platform.SetPopoutFloating(popped)
 	if popped {
 		platform.ShowGrid(false)
 	}

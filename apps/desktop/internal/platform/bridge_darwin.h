@@ -56,6 +56,12 @@ bool dz_option_key_down(void);
 // (used by the popped-out Drop Bar).
 void dz_set_pinned(bool pinned);
 
+// Toggles the popped-out Drop Bar's floating window behavior: when on, the
+// grid window floats always-on-top of other apps (NSFloatingWindowLevel) and
+// its position is persisted across launches via AppKit's frame autosave; when
+// off, it returns to normal window level and status-item-anchored placement.
+void dz_set_popout_floating(bool on);
+
 // Rewrites the image at src to dst with EXIF/GPS/TIFF/IPTC metadata removed.
 // Returns 0 on success.
 int dz_strip_image_metadata(const char *src, const char *dst);

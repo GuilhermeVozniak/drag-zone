@@ -52,6 +52,25 @@ static NSWindow *findGridWindow(void) {
     return gridWindow;
 }
 
+void dz_set_popout_floating(bool on) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSWindow *win = findGridWindow();
+        if (win == nil) {
+            return;
+        }
+        if (on) {
+            win.level = NSFloatingWindowLevel;
+            win.hidesOnDeactivate = NO;
+            win.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
+                                     NSWindowCollectionBehaviorFullScreenAuxiliary;
+            [win setFrameAutosaveName:@"DragZoneDropBarPopout"];
+        } else {
+            win.level = NSNormalWindowLevel;
+            [win setFrameAutosaveName:@""];
+        }
+    });
+}
+
 static NSArray<NSString *> *pathsFromJSON(const char *json) {
     if (json == NULL) {
         return @[];
