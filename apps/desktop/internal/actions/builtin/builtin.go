@@ -22,4 +22,6 @@ func RegisterAll(reg *actions.Registry) {
 	reg.Register(RemoveImageMetadata{})
 	reg.Register(GoogleDriveUpload{})
 	reg.Register(Screenshot{})
+	reg.Register(FinderPath{})
+	reg.Register(AppleNote{})
 }

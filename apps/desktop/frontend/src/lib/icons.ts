@@ -15,7 +15,9 @@ import {
   ImageOff,
   Link,
   type LucideIcon,
+  NotebookPen,
   Printer,
+  Route,
   Trash2,
   Type,
   Upload,
@@ -32,7 +34,9 @@ const byName: Record<string, LucideIcon> = {
   folder: Folder,
   globe: Globe,
   link: Link,
+  "notebook-pen": NotebookPen,
   printer: Printer,
+  route: Route,
   "trash-2": Trash2,
   type: Type,
   upload: Upload,
@@ -89,6 +93,14 @@ const tileStyles: Record<string, TileStyle> = {
   screenshot: {
     glyph: Camera,
     shape: "rounded-[14px] bg-gradient-to-b from-slate-400 to-slate-600",
+  },
+  "finder-path": {
+    glyph: Route,
+    shape: "rounded-[14px] bg-gradient-to-b from-yellow-400 to-amber-600",
+  },
+  "apple-note": {
+    glyph: NotebookPen,
+    shape: "rounded-full bg-gradient-to-b from-amber-300 to-yellow-500",
   },
 };
 
