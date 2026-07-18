@@ -44,6 +44,7 @@ func TestScreenshotSFTPSpec(t *testing.T) {
 }
 
 func TestScreenshotSFTPUploadsCaptureAndBuildsURL(t *testing.T) {
+	withScreenRecordingGranted(t)
 	withFakeScreenshotCmd(t, true)
 	fr := &fakeRemote{}
 	withFakeRemote(t, fr)
@@ -79,6 +80,7 @@ func TestScreenshotSFTPUploadsCaptureAndBuildsURL(t *testing.T) {
 }
 
 func TestScreenshotSFTPNoURLPrefixSkipsClipboard(t *testing.T) {
+	withScreenRecordingGranted(t)
 	withFakeScreenshotCmd(t, true)
 	fr := &fakeRemote{}
 	withFakeRemote(t, fr)
@@ -104,6 +106,7 @@ func TestScreenshotSFTPNoURLPrefixSkipsClipboard(t *testing.T) {
 }
 
 func TestScreenshotSFTPMissingCredentials(t *testing.T) {
+	withScreenRecordingGranted(t)
 	base := screenshotSFTPBaseOptions()
 	for _, missing := range []string{"host", "username", "password"} {
 		opts := map[string]string{}
@@ -124,6 +127,7 @@ func TestScreenshotSFTPMissingCredentials(t *testing.T) {
 }
 
 func TestScreenshotSFTPCancelledCaptureSkipsUpload(t *testing.T) {
+	withScreenRecordingGranted(t)
 	withFakeScreenshotCmd(t, false) // simulate Esc: screencapture writes nothing
 	fr := &fakeRemote{}
 	withFakeRemote(t, fr)
@@ -145,5 +149,42 @@ func TestScreenshotSFTPCancelledCaptureSkipsUpload(t *testing.T) {
 	}
 	if svc.Clipboard != "" {
 		t.Errorf("clipboard should be untouched on a cancelled capture, got %q", svc.Clipboard)
+	}
+}
+
+func TestScreenshotSFTPRequestsPermissionWhenMissing(t *testing.T) {
+	origHas, origReq := hasScreenRecording, requestScreenRecording
+	t.Cleanup(func() {
+		hasScreenRecording = origHas
+		requestScreenRecording = origReq
+	})
+	hasScreenRecording = func() bool { return false }
+	requested := false
+	requestScreenRecording = func() { requested = true }
+
+	calls := withFakeScreenshotCmd(t, true)
+	fr := &fakeRemote{}
+	withFakeRemote(t, fr)
+	svc := &recServices{}
+
+	res, err := ScreenshotSFTP{}.Clicked(context.Background(), actions.Invocation{
+		Target:   model.Target{Options: screenshotSFTPBaseOptions()},
+		Progress: nullProgress{},
+		Services: svc,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Message != screenRecordingPermissionMessage {
+		t.Errorf("Message = %q, want %q", res.Message, screenRecordingPermissionMessage)
+	}
+	if !requested {
+		t.Error("expected requestScreenRecording to be called")
+	}
+	if len(*calls) != 0 {
+		t.Errorf("expected screenshotCmd not to be invoked, got %+v", *calls)
+	}
+	if len(fr.uploads) != 0 {
+		t.Errorf("no upload should happen when permission is missing, got %v", fr.uploads)
 	}
 }

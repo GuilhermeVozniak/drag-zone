@@ -93,6 +93,7 @@ func TestScreenshotClickedBuildsArgsPerMode(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.mode, func(t *testing.T) {
+			withScreenRecordingGranted(t)
 			dir := t.TempDir()
 			calls := withFakeScreenshotCmd(t, true)
 			drop := &recDropBar{}
@@ -147,6 +148,7 @@ func TestScreenshotClickedBuildsArgsPerMode(t *testing.T) {
 }
 
 func TestScreenshotClickedCreatesMissingFolder(t *testing.T) {
+	withScreenRecordingGranted(t)
 	base := t.TempDir()
 	dir := filepath.Join(base, "nested", "shots")
 	withFakeScreenshotCmd(t, true)
@@ -168,6 +170,7 @@ func TestScreenshotClickedCreatesMissingFolder(t *testing.T) {
 }
 
 func TestScreenshotClickedAfterReveal(t *testing.T) {
+	withScreenRecordingGranted(t)
 	dir := t.TempDir()
 	withFakeScreenshotCmd(t, true)
 	drop := &recDropBar{}
@@ -195,6 +198,7 @@ func TestScreenshotClickedAfterReveal(t *testing.T) {
 }
 
 func TestScreenshotClickedCancelledCaptureSkipsDropBarAndError(t *testing.T) {
+	withScreenRecordingGranted(t)
 	dir := t.TempDir()
 	withFakeScreenshotCmd(t, false) // simulate Esc: screencapture writes nothing
 	drop := &recDropBar{}
@@ -221,5 +225,46 @@ func TestScreenshotClickedCancelledCaptureSkipsDropBarAndError(t *testing.T) {
 	}
 	if len(svc.Opened) != 0 {
 		t.Errorf("Reveal must not be called on a cancelled capture, got %v", svc.Opened)
+	}
+}
+
+func TestScreenshotClickedRequestsPermissionWhenMissing(t *testing.T) {
+	origHas, origReq := hasScreenRecording, requestScreenRecording
+	t.Cleanup(func() {
+		hasScreenRecording = origHas
+		requestScreenRecording = origReq
+	})
+	hasScreenRecording = func() bool { return false }
+	requested := false
+	requestScreenRecording = func() { requested = true }
+
+	dir := t.TempDir()
+	calls := withFakeScreenshotCmd(t, true)
+	drop := &recDropBar{}
+
+	inv := actions.Invocation{
+		Target: model.Target{Options: map[string]string{
+			"mode":   "screen",
+			"folder": dir,
+		}},
+		Services:   &recServices{},
+		AddDropBar: drop.add,
+	}
+
+	res, err := (Screenshot{}).Clicked(context.Background(), inv)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if res.Message != screenRecordingPermissionMessage {
+		t.Errorf("Message = %q, want %q", res.Message, screenRecordingPermissionMessage)
+	}
+	if !requested {
+		t.Error("expected requestScreenRecording to be called")
+	}
+	if len(*calls) != 0 {
+		t.Errorf("expected screenshotCmd not to be invoked, got %+v", *calls)
+	}
+	if len(drop.calls) != 0 {
+		t.Errorf("AddDropBar must not be called when permission is missing, got %v", drop.calls)
 	}
 }

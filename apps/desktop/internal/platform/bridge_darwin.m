@@ -4,6 +4,7 @@
 #import <QuickLookThumbnailing/QuickLookThumbnailing.h>
 #import <QuartzCore/QuartzCore.h>
 #import <ServiceManagement/ServiceManagement.h>
+#import <CoreGraphics/CoreGraphics.h>
 #include "bridge_darwin.h"
 
 // Callbacks implemented in Go (bridge_darwin.go).
@@ -617,6 +618,36 @@ int dz_strip_image_metadata(const char *csrc, const char *cdst) {
     CFRelease(dest);
     CFRelease(source);
     return ok ? 0 : -3;
+}
+
+// --- Screen Recording permission -----------------------------------------
+//
+// The Screenshot action shells out to screencapture, which just fails
+// ("could not create image from display") when Screen Recording access
+// hasn't been granted. These let the Go side check and (re)request access so
+// the user sees the real OS prompt instead of a silent failure.
+
+bool dz_has_screen_recording(void) {
+    if (@available(macOS 10.15, *)) {
+        return CGPreflightScreenCaptureAccess();
+    }
+    return true; // no such permission model before Catalina
+}
+
+void dz_request_screen_recording(void) {
+    if (@available(macOS 10.15, *)) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            CGRequestScreenCaptureAccess();
+        });
+    }
+}
+
+void dz_open_screen_recording_settings(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSURL *url = [NSURL URLWithString:
+            @"x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"];
+        [NSWorkspace.sharedWorkspace openURL:url];
+    });
 }
 
 // --- Init ---------------------------------------------------------------

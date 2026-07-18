@@ -1,5 +1,18 @@
 package builtin
 
+import "testing"
+
+// withScreenRecordingGranted stubs hasScreenRecording to report access is
+// already granted, so Screenshot/ScreenshotSFTP tests can exercise the
+// capture path without depending on the real (cgo, macOS-only) permission
+// state. Restores the original seam on cleanup.
+func withScreenRecordingGranted(t *testing.T) {
+	t.Helper()
+	origHas := hasScreenRecording
+	hasScreenRecording = func() bool { return true }
+	t.Cleanup(func() { hasScreenRecording = origHas })
+}
+
 // recServices is a recording actions.Services fake shared across builtin tests.
 type recServices struct {
 	Clipboard    string

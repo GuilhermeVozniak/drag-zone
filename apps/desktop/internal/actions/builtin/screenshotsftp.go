@@ -48,6 +48,11 @@ func (ScreenshotSFTP) Clicked(ctx context.Context, inv actions.Invocation) (acti
 		return actions.Result{}, fmt.Errorf("host, username and password must be configured")
 	}
 
+	if !hasScreenRecording() {
+		requestScreenRecording()
+		return actions.Result{Message: screenRecordingPermissionMessage}, nil
+	}
+
 	dst, err := captureScreenshotToTemp(ctx, inv.Target.Option("mode", "interactive"))
 	if err != nil {
 		return actions.Result{}, err

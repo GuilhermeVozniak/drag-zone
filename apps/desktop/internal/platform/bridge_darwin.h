@@ -69,4 +69,18 @@ void dz_set_popout_floating(bool on);
 // Returns 0 on success.
 int dz_strip_image_metadata(const char *src, const char *dst);
 
+// Reports whether the app currently has Screen Recording permission
+// (CGPreflightScreenCaptureAccess, macOS 10.15+). Pure check: never prompts.
+bool dz_has_screen_recording(void);
+
+// Triggers the OS Screen Recording permission prompt
+// (CGRequestScreenCaptureAccess) if not already granted or denied. Safe to
+// call repeatedly; the result is ignored (poll dz_has_screen_recording after
+// the user responds).
+void dz_request_screen_recording(void);
+
+// Opens System Settings to the Screen Recording privacy pane, for use after
+// the user has dismissed or denied the permission prompt.
+void dz_open_screen_recording_settings(void);
+
 #endif

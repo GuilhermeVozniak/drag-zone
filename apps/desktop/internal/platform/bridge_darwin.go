@@ -2,7 +2,7 @@ package platform
 
 /*
 #cgo CFLAGS: -x objective-c -fobjc-arc
-#cgo LDFLAGS: -framework Cocoa -framework Carbon -framework ServiceManagement -framework ImageIO -framework QuickLookThumbnailing
+#cgo LDFLAGS: -framework Cocoa -framework Carbon -framework ServiceManagement -framework ImageIO -framework QuickLookThumbnailing -framework CoreGraphics
 #include <stdlib.h>
 #include "bridge_darwin.h"
 */
@@ -183,6 +183,19 @@ func StripImageMetadata(src, dst string) error {
 	}
 	return nil
 }
+
+// HasScreenRecording reports whether the app currently has Screen Recording
+// permission (macOS 10.15+). Pure check: never prompts the user.
+func HasScreenRecording() bool { return bool(C.dz_has_screen_recording()) }
+
+// RequestScreenRecording triggers the OS Screen Recording permission prompt
+// if access hasn't already been granted or denied. Safe to call repeatedly;
+// callers should re-check HasScreenRecording after the user responds.
+func RequestScreenRecording() { C.dz_request_screen_recording() }
+
+// OpenScreenRecordingSettings opens System Settings to the Screen Recording
+// privacy pane, for use after the user dismisses or denies the prompt.
+func OpenScreenRecordingSettings() { C.dz_open_screen_recording_settings() }
 
 // airDrop shares files via AirDrop using the native sharing service.
 func airDrop(paths []string) error {

@@ -11,6 +11,7 @@ import (
 
 	"dragzone/internal/actions"
 	"dragzone/internal/model"
+	"dragzone/internal/platform"
 )
 
 // screenshotCmd is a seam so tests stub the capture (screencapture shows UI).
@@ -20,6 +21,20 @@ var screenshotCmd = func(ctx context.Context, args ...string) *exec.Cmd {
 
 // screenshotNow is a seam for deterministic filenames in tests.
 var screenshotNow = time.Now
+
+// hasScreenRecording and requestScreenRecording are seams over the native
+// Screen Recording permission check/prompt (see internal/platform), so tests
+// can stub them without cgo. Screenshot and ScreenshotSFTP both check
+// hasScreenRecording before shelling out to screencapture, which otherwise
+// just fails silently ("could not create image from display") when access
+// hasn't been granted.
+var hasScreenRecording = platform.HasScreenRecording
+var requestScreenRecording = platform.RequestScreenRecording
+
+// screenRecordingPermissionMessage is returned instead of running
+// screencapture when Screen Recording access hasn't been granted. Shared by
+// Screenshot and ScreenshotSFTP.
+const screenRecordingPermissionMessage = "Screen Recording permission is required — click Allow in the prompt (or System Settings ▸ Privacy & Security ▸ Screen Recording), then run this again."
 
 // Screenshot captures the screen via macOS screencapture and stashes the
 // result in the Drop Bar (or reveals it in Finder), Dropzone-4 style.
@@ -44,6 +59,11 @@ func (Screenshot) Spec() model.ActionSpec {
 }
 
 func (Screenshot) Clicked(ctx context.Context, inv actions.Invocation) (actions.Result, error) {
+	if !hasScreenRecording() {
+		requestScreenRecording()
+		return actions.Result{Message: screenRecordingPermissionMessage}, nil
+	}
+
 	mode := inv.Target.Option("mode", "interactive")
 
 	dir := expandHome(inv.Target.Option("folder", ""))
