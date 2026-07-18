@@ -2,6 +2,28 @@
 
 ## Parity status (updated 2026-07-18)
 
+**Built-in actions: 29 — Dropzone 4's COMPLETE built-in set.** Added this
+session: Screenshot, Copy Path, Create Apple Note, ImgBB, Short.io, Tinify,
+Zip & Email, Create GIF (pure-Go animated), YouTube Downloader (`yt-dlp`),
+Image Search, Run AppleScript, Screenshot & Upload (SFTP), and Flickr Upload
+(manual OAuth 1.0a HMAC-SHA1 signing, signature verified against the
+documented Twitter vector). Every action is unit-tested (httptest / exec &
+network seams) and independently reviewed.
+
+**Remaining delta to a pixel-identical clone — TWO architectural items only:**
+1. **Shortcuts / App Intents integration** — needs a native App Intents
+   extension target (Xcode/Swift, its own signing); the Wails build pipeline
+   doesn't produce one. Approximated today by the `dz add`/`dz run` CLI (a
+   macOS Shortcut can `Run Shell Script: dz add $file`).
+2. **True separate always-on-top pop-out Drop Bar window** — blocked by Wails
+   v2's single-window model (v3 alpha deliberately avoided). Current compact
+   pinned strip is the documented deviation.
+These are framework-level structural efforts, not missing features.
+
+---
+
+### (superseded) Earlier pass notes
+
 **Built-in actions: 26** (was 16). Delivered this pass toward parity:
 - ✅ **Screenshot** — native `screencapture` (interactive/window/screen) →
   timestamped file in `~/Screenshots` → straight into the Drop Bar
