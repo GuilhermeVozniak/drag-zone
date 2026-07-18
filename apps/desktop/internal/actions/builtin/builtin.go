@@ -27,4 +27,5 @@ func RegisterAll(reg *actions.Registry) {
 	reg.Register(Screenshot{})
 	reg.Register(FinderPath{})
 	reg.Register(AppleNote{})
+	reg.Register(ZipEmail{})
 }

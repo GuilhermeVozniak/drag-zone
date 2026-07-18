@@ -16,6 +16,7 @@ import {
   ImageUp,
   Link,
   type LucideIcon,
+  Mail,
   Minimize2,
   NotebookPen,
   Printer,
@@ -37,6 +38,7 @@ const byName: Record<string, LucideIcon> = {
   globe: Globe,
   "image-up": ImageUp,
   link: Link,
+  mail: Mail,
   "minimize-2": Minimize2,
   "notebook-pen": NotebookPen,
   printer: Printer,
@@ -117,6 +119,10 @@ const tileStyles: Record<string, TileStyle> = {
   tinify: {
     glyph: Minimize2,
     shape: "rounded-[14px] bg-gradient-to-b from-sky-400 to-indigo-600",
+  },
+  "zip-email": {
+    glyph: Mail,
+    shape: "rounded-[14px] bg-gradient-to-b from-blue-400 to-indigo-600",
   },
 };
 
