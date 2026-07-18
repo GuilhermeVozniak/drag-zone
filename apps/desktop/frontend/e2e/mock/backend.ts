@@ -177,6 +177,16 @@ export function OnFileDropOff(): void {}
 let nextId = 1;
 const genId = (prefix: string) => `${prefix}-${nextId++}`;
 
+// Test-only hook: `?onboarding=1` seeds a fresh first run (onboardingSeen
+// false) so dropbar-settings.spec.ts can drive the onboarding carousel
+// (src/features/onboarding/Onboarding.tsx, gated on this flag in
+// src/App.tsx's `showOnboarding`) without it popping up in every other spec,
+// which needs the grid to render immediately. Evaluated once at module init,
+// so it only takes effect on the navigation that requested it.
+const forceOnboarding =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("onboarding") === "1";
+
 let settings: Settings = {
   launchAtLogin: false,
   globalShortcut: "F3",
@@ -193,7 +203,7 @@ let settings: Settings = {
   autoUpdateCheck: false,
   // Seeded true so the e2e app opens straight into the grid instead of the
   // first-run onboarding carousel (see src/App.tsx's `showOnboarding`).
-  onboardingSeen: true,
+  onboardingSeen: !forceOnboarding,
 };
 
 // Mirrors the specs the real Go registry exposes for a handful of built-in
@@ -453,6 +463,15 @@ function startTask(
     t.percent = 100;
     t.status = "done";
     t.finishedAt = new Date().toISOString();
+    // Mirrors the real backend (internal/tasks/runner.go's OnResultURL ->
+    // app.go's addRecentShare): an action producing a shareable URL — here,
+    // shorten-url — sets the task's resultUrl and surfaces it in Recently
+    // Shared, instead of just finishing silently.
+    if (spec?.id === "shorten-url") {
+      t.resultUrl = "https://tinyurl.com/e2e-demo";
+      shares = [{ title: t.title, url: t.resultUrl, at: t.finishedAt }, ...shares].slice(0, 10);
+      emitShares();
+    }
     emitTasks();
   }, 50);
   return task;
