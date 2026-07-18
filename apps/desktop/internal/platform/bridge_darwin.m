@@ -163,6 +163,19 @@ static void showGridInternal(bool activate) {
         return;
     }
     hideDragTab();
+    if (pinnedMode) {
+        // The Drop Bar is popped out (floating): keep its autosaved / user-
+        // dragged position instead of snapping it back under the status item.
+        [win makeKeyAndOrderFront:nil];
+        if (activate) {
+            [NSApp activateIgnoringOtherApps:YES];
+        }
+        if (statusItem != nil) {
+            statusItem.button.highlighted = YES;
+        }
+        goGridVisibility(true);
+        return;
+    }
     NSRect anchor;
     NSScreen *screen;
     if (statusItem != nil && statusItem.button.window != nil) {
