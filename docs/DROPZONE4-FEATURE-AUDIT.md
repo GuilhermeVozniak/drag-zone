@@ -89,7 +89,7 @@ on a separate paid third-party app (CleanShot X).**
 | Feature | DragZone | Notes |
 |---|---|---|
 | **Shortcuts "Add to Drop Bar" / "Run Action"** | ✓ | v0.7.0–0.7.1: App-Intents `.appex` (Swift), `Metadata.appintents` generated via xcodebuild on CI, embedded + signed; intents shell out to `dz` (both mechanisms verified live) |
-| macOS Services integration | △ | approximated by the `dz` CLI (a Service/Shortcut can shell out) |
+| macOS Services integration | ✓ | v0.7.6: native `NSServices` provider — Finder → Services → "Add to DragZone Drop Bar" reads file URLs off the Services pasteboard and stacks them, reusing the menu-bar drop path |
 
 ## F. Genuine remaining gaps (honest)
 
