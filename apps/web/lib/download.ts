@@ -2,7 +2,7 @@ import { downloadUrl, latestReleaseUrl, type Platform } from "@dragzone/shared";
 
 // Single source of truth for the version the landing page advertises.
 // Bump this in lockstep with a desktop release tag.
-export const APP_VERSION = "0.7.1";
+export const APP_VERSION = "0.7.2";
 
 export type { Platform };
 export { downloadUrl, latestReleaseUrl };
