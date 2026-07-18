@@ -18,10 +18,11 @@ import (
 // contentsURL is a var so tests can point List at an httptest server.
 var contentsURL = "https://api.github.com/repos/aptonic/dropzone4-actions/contents/"
 
-const (
-	archiveURL  = "https://codeload.github.com/aptonic/dropzone4-actions/zip/refs/heads/master"
-	cacheMaxAge = 24 * time.Hour
-)
+// archiveURL is a var so tests can point FetchBundle's download step at an
+// httptest server, mirroring the contentsURL seam used by List.
+var archiveURL = "https://codeload.github.com/aptonic/dropzone4-actions/zip/refs/heads/master"
+
+const cacheMaxAge = 24 * time.Hour
 
 var client = &http.Client{Timeout: 60 * time.Second}
 
