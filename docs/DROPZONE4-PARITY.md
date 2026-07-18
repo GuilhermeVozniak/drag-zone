@@ -2,20 +2,20 @@
 
 ## Parity status (updated 2026-07-18)
 
-**Built-in actions: 22** (was 16). Delivered this pass toward parity:
+**Built-in actions: 26** (was 16). Delivered this pass toward parity:
 - ✅ **Screenshot** — native `screencapture` (interactive/window/screen) →
   timestamped file in `~/Screenshots` → straight into the Drop Bar
   (`Invocation.AddDropBar`). This is the Dropzone "screenshot experience"
   that was entirely missing. Real pixel capture needs macOS Screen Recording
   permission (grant it once to the app); action + wiring are unit-tested.
 - ✅ **Copy Path** (Finder Path), **Create Apple Note** (osascript),
-  **ImgBB**, **Short.io**, **Tinify (TinyPNG)** — the later-4.x actions.
+  **ImgBB**, **Short.io**, **Tinify (TinyPNG)**, **Zip & Email**,
+  **Create GIF** (pure-Go `image/gif`, animated), **YouTube Downloader**
+  (`yt-dlp`), **Image Search** (ImgBB upload → Google reverse search).
 
-**Remaining gaps toward 100% parity:**
-- Long-tail actions still missing: Zip & Email, Screenshot & Upload (SFTP),
-  YouTube Downloader (needs `yt-dlp`), Flickr (OAuth), Image Search, Create
-  GIF (needs ffmpeg for video). Feasible ones are being added; external-dep
-  ones (yt-dlp/ffmpeg) and OAuth-heavy ones (Flickr) are lower priority.
+**Remaining gaps toward 100% parity (action-level parity is now essentially complete):**
+- Niche/low-value actions still absent: Flickr (OAuth app), Screenshot &
+  Upload (SFTP) — a Shortcut-style composite of the existing Screenshot + FTP.
 - **Shortcuts / App Intents integration** ("Add to Drop Bar", "Run Action"):
   large — requires an App Intents extension. The `dz add`/`dz run` CLI
   approximates it today (a Shortcut can "Run Shell Script: dz add $file").
