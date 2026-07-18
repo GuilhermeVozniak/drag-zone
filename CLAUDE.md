@@ -36,6 +36,17 @@ bun run --filter=@dragzone/desktop-frontend test   # frontend unit tests (vitest
 gofmt -l .                         # must print nothing
 ```
 
+Desktop frontend E2E (run from `apps/desktop/frontend`):
+
+```sh
+bun run e2e                        # Playwright against a built app + mock backend (vite --mode e2e)
+```
+
+See `docs/TESTING.md` for the full test-layer table (unit / App-facade /
+component / E2E / web+shared / manual). The manual native-interaction
+checklist (menu-bar icon, Finder drag/drop, AirDrop, hotkeys) lives in
+`docs/EXPLORATION-2026-07-18.md`.
+
 Gotchas:
 - `wails` and `go` commands run from `apps/desktop`, not the repo root
   (`go.work` lets `go` find the module from the root, but `wails` needs the
