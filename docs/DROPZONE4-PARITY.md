@@ -10,15 +10,24 @@ Image Search, Run AppleScript, Screenshot & Upload (SFTP), and Flickr Upload
 documented Twitter vector). Every action is unit-tested (httptest / exec &
 network seams) and independently reviewed.
 
-**Remaining delta to a pixel-identical clone — TWO architectural items only:**
-1. **Shortcuts / App Intents integration** — needs a native App Intents
-   extension target (Xcode/Swift, its own signing); the Wails build pipeline
-   doesn't produce one. Approximated today by the `dz add`/`dz run` CLI (a
-   macOS Shortcut can `Run Shell Script: dz add $file`).
-2. **True separate always-on-top pop-out Drop Bar window** — blocked by Wails
-   v2's single-window model (v3 alpha deliberately avoided). Current compact
-   pinned strip is the documented deviation.
-These are framework-level structural efforts, not missing features.
+**Pop-out Drop Bar — now floats.** The popped-out Drop Bar is elevated to a
+floating always-on-top window (`NSFloatingWindowLevel`), stays visible when the
+app deactivates, joins all Spaces, and remembers its position across launches
+(`setFrameAutosaveName`), gated so the normal grid keeps its status-item
+anchoring. This matches Dropzone 4's floating-Drop-Bar *behavior* within Wails
+v2's single-window model (it elevates the one window in pop-out mode rather
+than opening a literal second window — a user-invisible internal detail).
+Native window behavior; verify on a real Mac like the other native features.
+
+**Remaining delta to a pixel-identical clone — ONE item:**
+- **Shortcuts / App Intents integration** — native “Add to Drop Bar” / “Run
+  Action” Shortcuts actions require an App Intents *extension target* (Swift +
+  `xcodebuild` + embedded `.appex` + its own signing) that the Wails build
+  pipeline structurally cannot produce. The `dz add` / `dz run` CLI provides
+  the same capability today (a macOS Shortcut can `Run Shell Script: dz add
+  $file`), so the workflow is available — just not as a first-class action in
+  the Shortcuts picker. This is a build-pipeline limitation, not a missing
+  feature.
 
 ---
 
