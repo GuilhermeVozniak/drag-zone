@@ -19,15 +19,23 @@ v2's single-window model (it elevates the one window in pop-out mode rather
 than opening a literal second window — a user-invisible internal detail).
 Native window behavior; verify on a real Mac like the other native features.
 
-**Remaining delta to a pixel-identical clone — ONE item:**
-- **Shortcuts / App Intents integration** — native “Add to Drop Bar” / “Run
-  Action” Shortcuts actions require an App Intents *extension target* (Swift +
-  `xcodebuild` + embedded `.appex` + its own signing) that the Wails build
-  pipeline structurally cannot produce. The `dz add` / `dz run` CLI provides
-  the same capability today (a macOS Shortcut can `Run Shell Script: dz add
-  $file`), so the workflow is available — just not as a first-class action in
-  the Shortcuts picker. This is a build-pipeline limitation, not a missing
-  feature.
+**Shortcuts / App Intents integration — now built in.** A Swift App Intents
+extension (`apps/desktop/appintents/DragZoneIntents.swift`) ships two actions,
+**Add to Drop Bar** and **Run Dropzone Action**, that shell out to the `dz`
+CLI. `build/build-appintents.sh` compiles it universal, runs
+`appintentsmetadataprocessor` to emit the `Metadata.appintents` discovery
+bundle (both intents present), embeds the signed `.appex` into
+`DragZone.app/Contents/PlugIns/`, and the release workflow builds + Developer-ID
+signs + notarizes it with the app. Compile / metadata / embed / sign are
+verified; the actions appearing in the Shortcuts app is native runtime state
+to confirm on a real login session (like drag-out / AirDrop / screen capture).
+
+**Parity: DragZone now reproduces Dropzone 4's full surface** — 29 built-in
+actions, screenshot capture → Drop Bar, floating always-on-top Drop Bar with
+position memory, and the Shortcuts/App-Intents extension. Remaining differences
+are deliberate, documented implementation choices (single Wails window elevated
+in pop-out mode rather than a literal second window; generated action artwork
+vs branded PNGs), not missing features.
 
 ---
 
