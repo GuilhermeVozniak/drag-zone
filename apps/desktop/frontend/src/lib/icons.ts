@@ -9,6 +9,7 @@ import {
   ClipboardCopy,
   CloudUpload,
   File,
+  FileStack,
   Files,
   Film,
   Folder,
@@ -22,6 +23,7 @@ import {
   Mail,
   Minimize2,
   NotebookPen,
+  PackageOpen,
   Printer,
   Route,
   ScrollText,
@@ -41,6 +43,7 @@ const byName: Record<string, LucideIcon> = {
   "clipboard-copy": ClipboardCopy,
   "cloud-upload": CloudUpload,
   file: File,
+  "file-stack": FileStack,
   files: Files,
   film: Film,
   folder: Folder,
@@ -51,6 +54,7 @@ const byName: Record<string, LucideIcon> = {
   mail: Mail,
   "minimize-2": Minimize2,
   "notebook-pen": NotebookPen,
+  "package-open": PackageOpen,
   printer: Printer,
   route: Route,
   "scroll-text": ScrollText,
@@ -159,6 +163,14 @@ const tileStyles: Record<string, TileStyle> = {
   flickr: {
     glyph: Aperture,
     shape: "rounded-[14px] bg-gradient-to-b from-pink-500 to-blue-500",
+  },
+  unzip: {
+    glyph: PackageOpen,
+    shape: "rounded-[14px] bg-gradient-to-b from-amber-300 to-orange-500",
+  },
+  "merge-pdfs": {
+    glyph: FileStack,
+    shape: "rounded-[14px] bg-gradient-to-b from-red-400 to-rose-600",
   },
 };
 

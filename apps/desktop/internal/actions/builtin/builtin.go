@@ -34,4 +34,6 @@ func RegisterAll(reg *actions.Registry) {
 	reg.Register(RunAppleScript{})
 	reg.Register(ScreenshotSFTP{})
 	reg.Register(FlickrUpload{})
+	reg.Register(Unzip{})
+	reg.Register(MergePDFs{})
 }
