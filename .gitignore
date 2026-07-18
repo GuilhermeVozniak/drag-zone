@@ -4,6 +4,7 @@ out/
 .next/
 .turbo/
 apps/desktop/build/bin/
+apps/desktop/build/appintents-out/
 apps/desktop/frontend/dist/
 apps/desktop/frontend/wailsjs/
 coverage/

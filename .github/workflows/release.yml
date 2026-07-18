@@ -86,6 +86,21 @@ jobs:
             exit 1
           fi
 
+      # Runs after the Developer ID identity is importable (so the .appex
+      # can be signed with it directly) and before "Sign app" below, whose
+      # `codesign --deep` over the whole bundle re-seals the embedded
+      # extension along with everything else. Ad-hoc signs when no signing
+      # secrets are configured (e.g. forks), matching the rest of this job.
+      - name: Build + embed App Intents extension (Shortcuts integration)
+        working-directory: apps/desktop
+        run: |
+          IDENTITY="-"
+          if [ "$HAS_MACOS_SIGNING" = "true" ]; then
+            KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+            IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" | awk '/Developer ID Application/{print $2; exit}')
+          fi
+          bash build/build-appintents.sh "$IDENTITY"
+
       - name: Sign app
         if: env.HAS_MACOS_SIGNING == 'true'
         working-directory: apps/desktop

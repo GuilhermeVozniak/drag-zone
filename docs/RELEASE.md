@@ -78,6 +78,22 @@ tab; on success a Release with the notarized `DragZone-<version>.dmg` appears.
 
 ## Notes & troubleshooting
 
+- **App Intents / Shortcuts extension:** `build/build-appintents.sh`
+  compiles `appintents/DragZoneIntents.swift` ("Add to Drop Bar" / "Run
+  Dropzone Action") and embeds it as `DragZoneIntents.appex` in
+  `dragzone.app/Contents/PlugIns/`. `release.yml` runs it after `wails
+  build` and the identity import, before the "Sign app" step. Locally, run
+  it by hand after `wails build`:
+  ```sh
+  cd apps/desktop
+  wails build
+  bash build/build-appintents.sh          # ad-hoc signs for local testing
+  ```
+  Pass a Developer ID identity (e.g. `bash build/build-appintents.sh
+  "Developer ID Application: ..."`) to sign it for real distribution; the
+  release workflow's later `codesign --deep` over the whole app re-seals it
+  regardless. Whether the actions actually register in the Shortcuts app is
+  a manual, logged-in-session check — it isn't exercised by CI.
 - **Universal cross-compile:** the app builds `darwin/universal` on an
   arm64 runner. If cgo cross-compilation to `amd64` ever breaks, fall back to
   `-platform darwin/arm64` in `release.yml` (Apple-silicon only).
