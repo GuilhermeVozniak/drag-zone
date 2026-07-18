@@ -55,7 +55,7 @@ function StackFan({ paths }: { paths: string[] }) {
     return <Files className="size-7 text-neutral-300" strokeWidth={1.5} />;
   }
   return (
-    <div className="relative size-[48px]">
+    <div className="relative size-[60px]">
       {layers.map((l, i) => (
         <img
           key={i}
@@ -66,7 +66,7 @@ function StackFan({ paths }: { paths: string[] }) {
             e.stopPropagation();
             if (l.path) backend.openPath(l.path);
           }}
-          className={`pointer-events-auto absolute inset-0 m-auto max-h-[40px] max-w-[40px] cursor-pointer rounded-[3px] border-2 border-white bg-white object-contain shadow-sm transition-transform duration-150 ease-out ${l.base} ${l.hover}`}
+          className={`pointer-events-auto absolute inset-0 m-auto max-h-[50px] max-w-[50px] cursor-pointer rounded-[3px] border-2 border-white bg-white object-contain shadow-sm transition-transform duration-150 ease-out ${l.base} ${l.hover}`}
         />
       ))}
     </div>
@@ -145,18 +145,18 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
             e.preventDefault();
             setCombineHover(false);
           }}
-          className={`group relative flex w-[64px] cursor-grab flex-col items-center gap-1 rounded-lg p-1.5 hover:bg-white/[0.08] ${
+          className={`group relative flex w-[72px] cursor-grab flex-col items-center gap-1 rounded-lg p-1.5 hover:bg-white/[0.08] ${
             combineHover ? "bg-sky-500/20 ring-2 ring-sky-400/80" : ""
           }`}
         >
-          <div className="relative flex size-[52px] items-center justify-center">
+          <div className="relative flex size-[64px] items-center justify-center">
             {count > 1 ? (
               <StackFan paths={item.paths ?? []} />
             ) : nativeIcon ? (
               <img
                 src={`data:image/png;base64,${nativeIcon}`}
                 alt=""
-                className="max-h-[46px] max-w-[46px] rounded-[3px] object-contain"
+                className="max-h-[58px] max-w-[58px] rounded-[3px] object-contain"
                 draggable={false}
               />
             ) : (

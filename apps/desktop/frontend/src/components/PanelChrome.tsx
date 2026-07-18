@@ -47,7 +47,7 @@ export function PanelChrome({ children }: { children: ReactNode }) {
         ref={panelRef}
         key={animate ? showKey : 0}
         className={cn(
-          "flex w-full flex-col overflow-hidden rounded-xl border border-white/10 shadow-2xl",
+          "flex w-full flex-col overflow-hidden rounded-lg border border-white/10 shadow-2xl",
           animate && "animate-in fade-in slide-in-from-top-2 duration-200",
         )}
         style={{ background: "var(--panel-bg)", maxHeight: PANEL_MAX_CONTENT_HEIGHT }}

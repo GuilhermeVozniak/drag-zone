@@ -33,9 +33,9 @@ function DashedTile({
       data-drop-id={dropId}
       onClick={onClick}
       style={{ "--wails-drop-target": "drop" } as React.CSSProperties}
-      className="flex w-[76px] flex-col items-center gap-1.5"
+      className="flex w-[80px] flex-col items-center gap-1.5"
     >
-      <span className="flex size-[52px] items-center justify-center rounded-xl border-2 border-dashed border-neutral-500 transition-colors hover:border-neutral-300">
+      <span className="flex size-[64px] items-center justify-center rounded-xl border-2 border-dashed border-neutral-500 transition-colors hover:border-neutral-300">
         {children}
       </span>
       <span className="text-[11px] text-neutral-400">{label}</span>
@@ -60,11 +60,11 @@ export function TopSection({ items, showAddToGrid = true, onAddClick }: TopSecti
         >
           {showAddToGrid && (
             <DashedTile dropId="add-to-grid" label="Add to Grid" onClick={onAddClick}>
-              <Plus className="size-6 text-neutral-300" strokeWidth={2} />
+              <Plus className="size-7 text-neutral-300" strokeWidth={2} />
             </DashedTile>
           )}
           <DashedTile dropId="dropbar" label="Drop Bar">
-            <ArrowDownToLine className="size-6 text-neutral-300" strokeWidth={2} />
+            <ArrowDownToLine className="size-7 text-neutral-300" strokeWidth={2} />
           </DashedTile>
           {items.map((item) => (
             <DropBarTile key={item.id} item={item} onRemove={(id) => backend.dropBar.remove(id)} />

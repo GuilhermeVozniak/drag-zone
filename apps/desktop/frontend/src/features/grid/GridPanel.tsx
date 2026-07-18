@@ -138,10 +138,19 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
     await backend.dropBar.consume(itemId); // leaves the bar unless locked
   };
 
+  const cols = settings?.gridColumns ?? 4;
   const colsClass =
-    { 3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6" }[
-      settings?.gridColumns ?? 4
-    ] ?? "grid-cols-4";
+    { 3: "grid-cols-3", 4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6" }[cols] ??
+    "grid-cols-4";
+
+  // Tile/icon size is column-aware so the fixed-width tiles always fit their
+  // grid track inside the 360px window: at 3-4 columns icons render at the
+  // Dropzone spec's ~64px large-icon default; denser 5-6 column layouts shrink
+  // to fit (track width ~344/cols). Driven by a prop, not CSS %, because each
+  // tile's grid item is a Radix ContextMenuTrigger wrapper that breaks
+  // percentage-width resolution against the track.
+  const tileSize =
+    cols >= 6 ? { w: 54, icon: 44 } : cols === 5 ? { w: 66, icon: 52 } : { w: 80, icon: 64 };
 
   const renderTiles = (list: Target[]) => (
     <div className={`grid ${colsClass} justify-items-center gap-y-0.5 px-2`}>
@@ -150,6 +159,8 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
           key={t.id}
           target={t}
           spec={specFor(t)}
+          tilePx={tileSize.w}
+          iconPx={tileSize.icon}
           showKeyOverlay={settings?.showKeyOverlays ?? true}
           optionHeld={optionHeld}
           onClick={() => handleClick(t)}

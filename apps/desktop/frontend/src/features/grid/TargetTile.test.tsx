@@ -49,6 +49,8 @@ function renderTile(over: {
     <TargetTile
       target={over.target ?? target()}
       spec={over.spec ?? spec()}
+      tilePx={80}
+      iconPx={64}
       showKeyOverlay={over.showKeyOverlay ?? true}
       optionHeld={over.optionHeld ?? false}
       {...handlers}

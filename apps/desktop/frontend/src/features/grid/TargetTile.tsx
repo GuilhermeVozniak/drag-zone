@@ -27,6 +27,9 @@ const MODIFIER_GLYPH: Record<string, string> = {
 interface TargetTileProps {
   target: Target;
   spec: ActionSpec | undefined;
+  /** Tile width and icon-box size in px, column-aware (see GridPanel). */
+  tilePx: number;
+  iconPx: number;
   showKeyOverlay: boolean;
   optionHeld: boolean;
   onClick: () => void;
@@ -41,6 +44,8 @@ interface TargetTileProps {
 export function TargetTile({
   target,
   spec,
+  tilePx,
+  iconPx,
   showKeyOverlay,
   optionHeld,
   onClick,
@@ -66,7 +71,7 @@ export function TargetTile({
             e.dataTransfer.effectAllowed = "move";
           }}
           className={cn(
-            "group relative flex w-[72px] flex-col items-center gap-1 rounded-xl p-1.5 outline-none",
+            "group relative flex flex-col items-center gap-1 rounded-xl p-1.5 outline-none",
             "transition-transform duration-100",
             hover && !optionHeld && "scale-105",
             // Delete mode jiggles the tiles, like Dropzone / iOS edit mode.
@@ -75,6 +80,7 @@ export function TargetTile({
           style={
             {
               "--wails-drop-target": "drop",
+              width: tilePx,
               ...(optionHeld ? { animationDelay: `${(target.position % 4) * 45}ms` } : {}),
             } as React.CSSProperties
           }
@@ -103,26 +109,23 @@ export function TargetTile({
         >
           <div
             className={cn(
-              "flex size-[52px] items-center justify-center rounded-xl",
+              "flex items-center justify-center rounded-xl",
               "transition-all duration-100",
               // A dragged file darkens the hovered icon, like Finder's
               // drop-target folders — no ring or background.
               hover && "brightness-[0.6] saturate-150",
             )}
+            style={{ width: iconPx, height: iconPx }}
           >
             {nativeIcon ? (
               <img
                 src={`data:image/png;base64,${nativeIcon}`}
                 alt=""
-                className="size-[52px]"
+                className="size-full object-contain"
                 draggable={false}
               />
             ) : (
-              <ActionTileIcon
-                actionId={target.actionId}
-                icon={spec?.icon}
-                className="size-[46px]"
-              />
+              <ActionTileIcon actionId={target.actionId} icon={spec?.icon} className="size-[90%]" />
             )}
           </div>
           <span className="line-clamp-2 w-full text-center text-[10px] leading-tight text-neutral-300">
