@@ -21,16 +21,24 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
+	os.Exit(run(os.Args[1:]))
+}
+
+// run executes one CLI invocation and returns the process exit code. It is
+// factored out of main so tests can drive the full request/response flow
+// in-process (against a fake IPC server) without os.Exit tearing down the
+// test binary.
+func run(args []string) int {
+	if len(args) < 1 {
 		usage()
-		os.Exit(2)
+		return 2
 	}
-	cmd := os.Args[1]
-	args := os.Args[2:]
+	cmd := args[0]
+	rest0 := args[1:]
 
 	flags := map[string]bool{}
 	var rest []string
-	for _, a := range args {
+	for _, a := range rest0 {
 		if strings.HasPrefix(a, "--") {
 			flags[strings.TrimPrefix(a, "--")] = true
 		} else {
@@ -52,9 +60,10 @@ func main() {
 	data, err := ipc.Call(ipc.Request{Cmd: cmd, Args: rest, Flags: flags})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "dz:", err)
-		os.Exit(1)
+		return 1
 	}
 	printResult(cmd, data, flags["json"])
+	return 0
 }
 
 func printResult(cmd string, data json.RawMessage, asJSON bool) {
