@@ -1,5 +1,32 @@
 # Dropzone 4 — Feature Parity Reference
 
+## Parity status (updated 2026-07-18)
+
+**Built-in actions: 22** (was 16). Delivered this pass toward parity:
+- ✅ **Screenshot** — native `screencapture` (interactive/window/screen) →
+  timestamped file in `~/Screenshots` → straight into the Drop Bar
+  (`Invocation.AddDropBar`). This is the Dropzone "screenshot experience"
+  that was entirely missing. Real pixel capture needs macOS Screen Recording
+  permission (grant it once to the app); action + wiring are unit-tested.
+- ✅ **Copy Path** (Finder Path), **Create Apple Note** (osascript),
+  **ImgBB**, **Short.io**, **Tinify (TinyPNG)** — the later-4.x actions.
+
+**Remaining gaps toward 100% parity:**
+- Long-tail actions still missing: Zip & Email, Screenshot & Upload (SFTP),
+  YouTube Downloader (needs `yt-dlp`), Flickr (OAuth), Image Search, Create
+  GIF (needs ffmpeg for video). Feasible ones are being added; external-dep
+  ones (yt-dlp/ffmpeg) and OAuth-heavy ones (Flickr) are lower priority.
+- **Shortcuts / App Intents integration** ("Add to Drop Bar", "Run Action"):
+  large — requires an App Intents extension. The `dz add`/`dz run` CLI
+  approximates it today (a Shortcut can "Run Shell Script: dz add $file").
+- **△ architectural approximations** (Wails v2 constraints): the pop-out Drop
+  Bar reuses the single window instead of a separate always-on-top window;
+  action artwork is generated (colored shape + glyph) rather than Dropzone's
+  branded PNGs. These are deliberate, documented deviations.
+
+---
+
+
 Research compiled 2026-07-05 from aptonic.com, the `aptonic/dropzone4-actions` GitHub repo, Mac App Store, and reviews (Macworld, MacSources, Mause). This is the spec DragZone is built against.
 
 ## 1. Core UX flow
