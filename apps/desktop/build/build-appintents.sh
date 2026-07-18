@@ -133,44 +133,83 @@ chmod +x "$APPEX_STAGE/Contents/MacOS/DragZoneIntents"
 
 plutil -lint "$APPEX_STAGE/Contents/Info.plist"
 
+# Metadata.appintents generation is BEST-EFFORT: appintentsmetadataprocessor
+# shells out to `swift-reflection-test` from the *active* toolchain, and on
+# at least one combination of GitHub's macos-14 runner image and an older
+# Xcode this fails with "swift-reflection-test: No such file or directory"
+# even though compiling, linking, and assembling the .appex all succeed. That
+# failure has nothing to do with whether the extension itself works - it only
+# means Shortcuts/Siri/Spotlight can't discover its intents ahead of time.
+# Losing discovery metadata on a bad CI toolchain is far better than aborting
+# the whole release, so this step (and its const-values-list prerequisite,
+# which only matters for this step) is wrapped in an explicit guard: `set -e`
+# does not abort the script for a failing command tested by `if ... ; then`,
+# so run_appintents_metadata's internal failures can't trip errexit here,
+# while every step outside this guard (compile/lipo/assemble/embed/codesign)
+# still hard-fails as before.
+#
+# APPINTENTS_METADATA_TOOL overrides which processor binary is invoked - unset
+# it (or leave it as the default) for normal use; it exists so this
+# best-effort path can be exercised on demand, e.g.
+# `APPINTENTS_METADATA_TOOL=/bin/false bash build/build-appintents.sh` to
+# simulate a toolchain that rejects the processor.
+APPINTENTS_METADATA_TOOL="${APPINTENTS_METADATA_TOOL:-appintentsmetadataprocessor}"
+
+run_metadata_processor() {
+  if [[ "$APPINTENTS_METADATA_TOOL" = /* ]]; then
+    "$APPINTENTS_METADATA_TOOL" "$@"
+  else
+    xcrun "$APPINTENTS_METADATA_TOOL" "$@"
+  fi
+}
+
+run_appintents_metadata() {
+  local source_file_list="$SCRATCH_DIR/source-files.txt"
+  printf '%s\n' "$APPINTENTS_DIR/DragZoneIntents.swift" >"$source_file_list"
+
+  local const_vals_list="$SCRATCH_DIR/const-vals.txt"
+  : >"$const_vals_list"
+  local arch
+  for arch in "${ARCHS[@]}"; do
+    printf '%s\n' "$SCRATCH_DIR/$arch/DragZoneIntents.swiftconstvalues" >>"$const_vals_list"
+  done
+
+  local target_triple_args=()
+  for arch in "${ARCHS[@]}"; do
+    target_triple_args+=(--target-triple "$arch-apple-macos$MIN_MACOS")
+  done
+
+  local xcode_developer_dir toolchain_dir sdk_root xcode_version bundle_id
+  xcode_developer_dir="$(xcode-select -p)"
+  toolchain_dir="$xcode_developer_dir/Toolchains/XcodeDefault.xctoolchain"
+  sdk_root="$(xcrun --show-sdk-path)"
+  xcode_version="$(defaults read "$(dirname "$xcode_developer_dir")/version.plist" ProductBuildVersion)"
+  bundle_id="$(plutil -extract CFBundleIdentifier raw "$APPINTENTS_DIR/Info.plist")"
+
+  run_metadata_processor \
+    --toolchain-dir "$toolchain_dir" \
+    --module-name "$MODULE_NAME" \
+    --sdk-root "$sdk_root" \
+    --xcode-version "$xcode_version" \
+    --platform-family macOS \
+    --deployment-target "$MIN_MACOS" \
+    "${target_triple_args[@]}" \
+    --source-file-list "$source_file_list" \
+    --swift-const-vals-list "$const_vals_list" \
+    --binary-file "$APPEX_STAGE/Contents/MacOS/DragZoneIntents" \
+    --bundle-identifier "$bundle_id" \
+    --output "$APPEX_STAGE/Contents/Resources"
+
+  [ -d "$APPEX_STAGE/Contents/Resources/Metadata.appintents" ]
+}
+
 echo "==> generating Metadata.appintents"
-SOURCE_FILE_LIST="$SCRATCH_DIR/source-files.txt"
-printf '%s\n' "$APPINTENTS_DIR/DragZoneIntents.swift" >"$SOURCE_FILE_LIST"
-
-CONST_VALS_LIST="$SCRATCH_DIR/const-vals.txt"
-: >"$CONST_VALS_LIST"
-for arch in "${ARCHS[@]}"; do
-  printf '%s\n' "$SCRATCH_DIR/$arch/DragZoneIntents.swiftconstvalues" >>"$CONST_VALS_LIST"
-done
-
-TARGET_TRIPLE_ARGS=()
-for arch in "${ARCHS[@]}"; do
-  TARGET_TRIPLE_ARGS+=(--target-triple "$arch-apple-macos$MIN_MACOS")
-done
-
-XCODE_DEVELOPER_DIR="$(xcode-select -p)"
-TOOLCHAIN_DIR="$XCODE_DEVELOPER_DIR/Toolchains/XcodeDefault.xctoolchain"
-SDK_ROOT="$(xcrun --show-sdk-path)"
-XCODE_VERSION="$(defaults read "$(dirname "$XCODE_DEVELOPER_DIR")/version.plist" ProductBuildVersion)"
-BUNDLE_ID="$(plutil -extract CFBundleIdentifier raw "$APPINTENTS_DIR/Info.plist")"
-
-xcrun appintentsmetadataprocessor \
-  --toolchain-dir "$TOOLCHAIN_DIR" \
-  --module-name "$MODULE_NAME" \
-  --sdk-root "$SDK_ROOT" \
-  --xcode-version "$XCODE_VERSION" \
-  --platform-family macOS \
-  --deployment-target "$MIN_MACOS" \
-  "${TARGET_TRIPLE_ARGS[@]}" \
-  --source-file-list "$SOURCE_FILE_LIST" \
-  --swift-const-vals-list "$CONST_VALS_LIST" \
-  --binary-file "$APPEX_STAGE/Contents/MacOS/DragZoneIntents" \
-  --bundle-identifier "$BUNDLE_ID" \
-  --output "$APPEX_STAGE/Contents/Resources"
-
-if [ ! -d "$APPEX_STAGE/Contents/Resources/Metadata.appintents" ]; then
-  echo "error: appintentsmetadataprocessor did not produce Metadata.appintents" >&2
-  exit 1
+METADATA_OK=1
+if run_appintents_metadata; then
+  echo "==> Metadata.appintents OK"
+else
+  METADATA_OK=0
+  echo "WARNING: Metadata.appintents generation failed on this toolchain (swift-reflection-test/appintentsmetadataprocessor); embedding extension WITHOUT discovery metadata - regenerate on a compatible Xcode for Shortcuts discovery" >&2
 fi
 
 echo "==> embedding into $PLUGINS_DIR"
@@ -188,4 +227,8 @@ else
 fi
 
 codesign -v "$PLUGINS_DIR/$APPEX_NAME"
-echo "==> done: $PLUGINS_DIR/$APPEX_NAME"
+if [ "$METADATA_OK" -eq 1 ]; then
+  echo "==> done: $PLUGINS_DIR/$APPEX_NAME (with Metadata.appintents)"
+else
+  echo "==> done: $PLUGINS_DIR/$APPEX_NAME (WITHOUT Metadata.appintents - see warning above)"
+fi

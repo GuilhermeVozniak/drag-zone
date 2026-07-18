@@ -94,6 +94,16 @@ jobs:
       - name: Build + embed App Intents extension (Shortcuts integration)
         working-directory: apps/desktop
         run: |
+          # appintentsmetadataprocessor (invoked by build-appintents.sh) is
+          # pickier about the active toolchain than plain swiftc/lipo/codesign;
+          # point xcode-select at the newest Xcode installed on the runner
+          # image to give it the best chance of succeeding. Best-effort: if no
+          # /Applications/Xcode_*.app exists (or the switch fails), fall back
+          # to whatever is already selected. build-appintents.sh treats a
+          # metadata-generation failure as non-fatal regardless.
+          sudo xcode-select -s "$(find /Applications -maxdepth 1 -name 'Xcode_*.app' 2>/dev/null | sort -V | tail -1 || echo /Applications/Xcode.app)" || true
+          xcodebuild -version
+
           IDENTITY="-"
           if [ "$HAS_MACOS_SIGNING" = "true" ]; then
             KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
