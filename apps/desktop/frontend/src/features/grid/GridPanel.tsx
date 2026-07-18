@@ -41,7 +41,7 @@ import { TargetTile } from "./TargetTile";
 
 const FOLDER_APP_ACTIONS = new Set(["folder", "open-app"]);
 
-export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) => void }) {
   const targets = useTargets();
   const tasks = useTasks();
   const dropBarItems = useDropBar();
@@ -200,14 +200,15 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onOpenSettings}>
+              <DropdownMenuItem onClick={() => onOpenSettings("addons")}>
                 <Download className="size-3.5" /> Get More Actions…
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onOpenSettings}>
+              <DropdownMenuItem onClick={() => onOpenSettings()}>
                 <Wrench className="size-3.5" /> Develop Action…
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <div className="mx-1.5 h-4 w-px bg-white/15" />
           <HeaderButton
             title={topCollapsed ? "Show Drop Bar" : "Hide Drop Bar"}
             onClick={() => setTopCollapsed((c) => !c)}
@@ -235,7 +236,7 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onOpenSettings}>
+              <DropdownMenuItem onClick={() => onOpenSettings()}>
                 <SettingsIcon className="size-3.5" /> Settings…
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => backend.actions.openFolder()}>

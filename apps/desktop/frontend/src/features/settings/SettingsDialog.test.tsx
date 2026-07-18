@@ -48,7 +48,7 @@ describe("SettingsDialog", () => {
     render(<SettingsDialog open onOpenChange={vi.fn()} />);
     await waitFor(() => expect(screen.getByText("Grid size")).toBeInTheDocument());
 
-    await user.click(screen.getByRole("tab", { name: "Add-ons" }));
+    await user.click(screen.getByRole("tab", { name: "Add-on Actions" }));
     await waitFor(() => expect(screen.getByText("Zip It")).toBeInTheDocument());
     expect(screen.queryByText("Grid size")).not.toBeInTheDocument();
   });

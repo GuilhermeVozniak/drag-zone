@@ -86,7 +86,7 @@ test.describe("Settings", () => {
     await expect(dialog.getByText("Grid size")).toBeVisible();
     await expect(dialog.getByText("Launch at login")).toBeVisible();
 
-    await dialog.getByRole("tab", { name: "Add-ons" }).click();
+    await dialog.getByRole("tab", { name: "Add-on Actions" }).click();
     await expect(
       dialog.getByText("Community actions from aptonic/dropzone4-actions.", { exact: false }),
     ).toBeVisible();

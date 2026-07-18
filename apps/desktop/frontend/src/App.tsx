@@ -13,7 +13,13 @@ import { setUIScale } from "@/lib/dnd";
 
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState("general");
   const [poppedOut, setPoppedOut] = useState(false);
+
+  const openSettings = (tab?: string) => {
+    setSettingsTab(tab ?? "general");
+    setSettingsOpen(true);
+  };
   const [settings, setSettings] = useSettings();
 
   // Show the first-run carousel until the user finishes or skips it.
@@ -42,7 +48,7 @@ function App() {
   }, [scale]);
 
   useEffect(() => {
-    const offSettings = events.onOpenSettings(() => setSettingsOpen(true));
+    const offSettings = events.onOpenSettings(() => openSettings("general"));
     const offPopout = events.onDropBarPopOut(setPoppedOut);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") backend.window.hide();
@@ -65,10 +71,10 @@ function App() {
             ) : poppedOut ? (
               <PopoutBar />
             ) : (
-              <GridPanel onOpenSettings={() => setSettingsOpen(true)} />
+              <GridPanel onOpenSettings={openSettings} />
             )}
           </PanelChrome>
-          <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+          <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} tab={settingsTab} />
           <InputRequestDialog />
         </TooltipProvider>
       </ErrorBoundary>
