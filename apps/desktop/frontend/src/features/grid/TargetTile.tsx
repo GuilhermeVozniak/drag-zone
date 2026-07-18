@@ -66,7 +66,7 @@ export function TargetTile({
             e.dataTransfer.effectAllowed = "move";
           }}
           className={cn(
-            "group relative flex w-[76px] flex-col items-center gap-1.5 rounded-xl p-2 outline-none",
+            "group relative flex w-[72px] flex-col items-center gap-1 rounded-xl p-1.5 outline-none",
             "transition-transform duration-100",
             hover && !optionHeld && "scale-105",
             // Delete mode jiggles the tiles, like Dropzone / iOS edit mode.
@@ -125,7 +125,7 @@ export function TargetTile({
               />
             )}
           </div>
-          <span className="line-clamp-2 w-full text-center text-[11px] leading-tight text-neutral-300">
+          <span className="line-clamp-2 w-full text-center text-[10px] leading-tight text-neutral-300">
             {target.label}
           </span>
           {hover && spec?.keyModifier && MODIFIER_GLYPH[spec.keyModifier] && (

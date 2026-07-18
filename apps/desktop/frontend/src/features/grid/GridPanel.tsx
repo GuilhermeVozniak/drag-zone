@@ -144,7 +144,7 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
     ] ?? "grid-cols-4";
 
   const renderTiles = (list: Target[]) => (
-    <div className={`grid ${colsClass} justify-items-center gap-y-1 px-3`}>
+    <div className={`grid ${colsClass} justify-items-center gap-y-0.5 px-2`}>
       {list.map((t) => (
         <TargetTile
           key={t.id}
@@ -314,7 +314,7 @@ function HeaderButton({
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-t border-white/10">
-      <p className="px-4 pb-1.5 pt-2 text-[10px] font-semibold tracking-wider text-neutral-500">
+      <p className="px-4 pb-1 pt-1.5 text-[10px] font-semibold tracking-wider text-neutral-500">
         {label}
       </p>
       {children}
