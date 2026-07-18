@@ -54,6 +54,18 @@ export function useActionSpecs(): ActionSpec[] {
   return specs;
 }
 
+/**
+ * Whether a native file drag from Finder is currently over the open grid.
+ * Backed by a native signal (see bridge_darwin.m's global drag monitor),
+ * not HTML5 dragenter/dragover, which don't reliably fire for native file
+ * drags in a Wails WKWebView. Drives the drop-target overlay.
+ */
+export function useDragActive(): boolean {
+  const [active, setActive] = useState(false);
+  useEffect(() => events.onDragActive(setActive), []);
+  return active;
+}
+
 // Settings live in a tiny module store so every consumer re-renders when any
 // component saves a change.
 let settingsState: Settings | null = null;

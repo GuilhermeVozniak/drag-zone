@@ -22,12 +22,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TopSection } from "@/features/dropbar/TopSection";
 import { TaskList } from "@/features/tasks/TaskList";
-import { useActionSpecs, useDropBar, useSettings, useTargets, useTasks } from "@/hooks/useBackend";
+import {
+  useActionSpecs,
+  useDragActive,
+  useDropBar,
+  useSettings,
+  useTargets,
+  useTasks,
+} from "@/hooks/useBackend";
 import { useNativeFileDrop } from "@/hooks/useNativeFileDrop";
 import { useTargetShortcuts } from "@/hooks/useTargetShortcuts";
 import { backend, type Target } from "@/lib/backend";
 import { AddTargetDialog } from "./AddTargetDialog";
 import { clickBehavior } from "./clickBehavior";
+import { DropTargetOverlay } from "./DropTargetOverlay";
 import { RecentSharesPill } from "./RecentSharesPill";
 import { TargetTile } from "./TargetTile";
 
@@ -39,6 +47,10 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
   const dropBarItems = useDropBar();
   const specs = useActionSpecs();
   const [settings] = useSettings();
+  const dragActive = useDragActive();
+  // Dropzone's "Show drag target overlay when dragging items" setting;
+  // defaults to on when settings haven't loaded yet.
+  const showDragOverlay = dragActive && (settings?.dragOverlay ?? true);
 
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<Target | null>(null);
@@ -153,7 +165,8 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      <DropTargetOverlay active={showDragOverlay} />
       <header
         className="flex items-center justify-between px-3 py-2"
         style={{ "--wails-draggable": "drag" } as React.CSSProperties}

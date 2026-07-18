@@ -74,6 +74,7 @@ export const events = {
   onWindowVisibility: sub("window:visibility"),
   onWindowBeak: sub("window:beak"),
   onSharesChanged: sub("shares:changed"),
+  onDragActive: sub("drag:active"),
 };
 
 // --- test helpers ---

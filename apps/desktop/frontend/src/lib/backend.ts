@@ -121,4 +121,9 @@ export const events = {
   onWindowVisibility: (fn: (visible: boolean) => void) => EventsOn("window:visibility", fn),
   onWindowBeak: (fn: (x: number) => void) => EventsOn("window:beak", fn),
   onSharesChanged: (fn: (shares: Share[]) => void) => EventsOn("shares:changed", fn),
+  /** Whether a native (Finder) file drag is currently over the open grid
+   * window; drives the drop-target overlay. Emitted by the native drag
+   * monitor in bridge_darwin.m, not HTML5 dragenter/dragover — those don't
+   * reliably fire for native file drags in a Wails WKWebView. */
+  onDragActive: (fn: (active: boolean) => void) => EventsOn("drag:active", fn),
 };

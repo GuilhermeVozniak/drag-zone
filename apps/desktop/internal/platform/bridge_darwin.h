@@ -38,7 +38,10 @@ int dz_set_login_item(bool enabled);
 // slot (1 = toggle grid, 2 = pop out Drop Bar); fkey 0 unregisters the slot.
 void dz_set_hotkey_f(int fkey, int slot);
 
-// Enables/disables showing the grid when a file drag nears the menu bar.
+// Enables/disables the drag-target overlay behaviors: showing the grid when
+// a file drag nears the menu bar, and reporting drag-over-grid state (see
+// goDragActive in bridge_darwin.go) for the "drop to add" overlay shown while
+// the grid is already open.
 void dz_set_drag_overlay_enabled(bool enabled);
 
 // Status item states (Dropzone shows task feedback in the menu bar icon).

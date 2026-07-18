@@ -31,6 +31,12 @@ type Handlers struct {
 	GridBeak func(x float64)
 	// PopOutHotkey fires when the pop-out-Drop-Bar global hotkey is pressed.
 	PopOutHotkey func()
+	// DragActive reports whether a native file drag from Finder is
+	// currently over the (already open) grid window, so the frontend can
+	// show a drop-target overlay. Driven by the same global drag monitor
+	// used for the menu-bar drag-reveal tab; gated by the drag-overlay
+	// setting (SetDragOverlayEnabled).
+	DragActive func(active bool)
 }
 
 var (
@@ -123,8 +129,9 @@ const (
 // SetHotkeyF binds a global hotkey slot to F<n> (1-12); 0 disables the slot.
 func SetHotkeyF(n, slot int) { C.dz_set_hotkey_f(C.int(n), C.int(slot)) }
 
-// SetDragOverlayEnabled toggles showing the grid when a file drag nears the
-// menu bar.
+// SetDragOverlayEnabled toggles the drag-target overlay behaviors: showing
+// the grid when a file drag nears the menu bar, and the DragActive signal
+// used for the "drop to add" overlay over an already-open grid.
 func SetDragOverlayEnabled(enabled bool) { C.dz_set_drag_overlay_enabled(C.bool(enabled)) }
 
 // StatusState values for SetStatusState, mirroring Dropzone's menu bar icon
@@ -252,5 +259,15 @@ func goPopOutHotkey() {
 	handlersMu.RUnlock()
 	if fn != nil {
 		go fn()
+	}
+}
+
+//export goDragActive
+func goDragActive(active C.bool) {
+	handlersMu.RLock()
+	fn := handlers.DragActive
+	handlersMu.RUnlock()
+	if fn != nil {
+		go fn(bool(active))
 	}
 }

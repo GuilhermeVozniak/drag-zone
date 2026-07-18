@@ -13,6 +13,7 @@ extern void goOpenSettings(void);
 extern void goGridVisibility(bool visible);
 extern void goGridBeak(double x);
 extern void goPopOutHotkey(void);
+extern void goDragActive(bool active);
 
 static NSStatusItem *statusItem = nil;
 static NSWindow *gridWindow = nil;
@@ -22,6 +23,10 @@ static bool shownForDrag = false;
 static bool pinnedMode = false;
 static bool dragOverlayEnabled = true;
 static NSWindow *dragTab = nil;
+// Tracks whether a file drag is currently over the open grid window, so
+// goDragActive only fires on state changes (see the drag monitor in
+// dz_init) — drives the frontend's drop-target overlay.
+static bool dragActiveOverGrid = false;
 
 void dz_set_drag_overlay_enabled(bool enabled) {
     dragOverlayEnabled = enabled;
@@ -656,10 +661,35 @@ void dz_init(const char *windowTitle) {
                 return;
             }
             NSPasteboard *pb = [NSPasteboard pasteboardWithName:NSPasteboardNameDrag];
-            if ([pb availableTypeFromArray:@[ NSPasteboardTypeFileURL ]] == nil) {
+            bool isFileDrag = [pb availableTypeFromArray:@[ NSPasteboardTypeFileURL ]] != nil;
+            if (!isFileDrag) {
+                if (dragActiveOverGrid) {
+                    dragActiveOverGrid = false;
+                    goDragActive(false);
+                }
                 return;
             }
-            if (statusItem == nil || statusItem.button.window == nil || dz_grid_visible()) {
+
+            // While the grid is already open, report whether the drag is
+            // currently over its bounds so the frontend can show a
+            // drop-target overlay (Dropzone's "Show drag target overlay
+            // when dragging items" setting). This is a distinct signal from
+            // the menu-bar drag-reveal tab below, which only applies while
+            // the grid is still closed.
+            if (dz_grid_visible()) {
+                NSWindow *win = findGridWindow();
+                bool overGrid = win != nil && NSPointInRect(NSEvent.mouseLocation, win.frame);
+                if (overGrid != dragActiveOverGrid) {
+                    dragActiveOverGrid = overGrid;
+                    goDragActive(overGrid);
+                }
+                return;
+            }
+            if (dragActiveOverGrid) {
+                dragActiveOverGrid = false;
+                goDragActive(false);
+            }
+            if (statusItem == nil || statusItem.button.window == nil) {
                 return;
             }
             NSRect anchor = statusItem.button.window.frame;
@@ -690,6 +720,10 @@ void dz_init(const char *windowTitle) {
         }];
         [NSEvent addGlobalMonitorForEventsMatchingMask:NSEventMaskLeftMouseUp
                                                handler:^(NSEvent *e) {
+            if (dragActiveOverGrid) {
+                dragActiveOverGrid = false;
+                goDragActive(false);
+            }
             if (!shownForDrag) {
                 return;
             }

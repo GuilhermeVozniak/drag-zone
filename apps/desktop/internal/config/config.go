@@ -12,20 +12,24 @@ const fileName = "settings.json"
 // Settings are the user-configurable preferences, mirroring Dropzone 4's
 // General settings tab.
 type Settings struct {
-	LaunchAtLogin     bool   `json:"launchAtLogin"`
-	GlobalShortcut    string `json:"globalShortcut"` // open grid, e.g. "F3"
-	PopOutShortcut    string `json:"popOutShortcut"` // pop out Drop Bar, e.g. "F4"
-	GridColumns       int    `json:"gridColumns"`
-	GridSize          int    `json:"gridSize"` // 0-100 slider; ~33 = 100% scale
-	Theme             string `json:"theme"`    // system | dark ("always use dark mode")
-	AnimateGrid       bool   `json:"animateGrid"`
-	ShowKeyOverlays   bool   `json:"showKeyOverlays"`
-	PlaySounds        bool   `json:"playSounds"`
-	DragOverlay       bool   `json:"dragOverlay"` // show grid when dragging near the menu bar
-	DropBarKeepsItems bool   `json:"dropBarKeepsItems"`
-	NotifyOnComplete  bool   `json:"notifyOnComplete"`
-	AutoUpdateCheck   bool   `json:"autoUpdateCheck"`
-	OnboardingSeen    bool   `json:"onboardingSeen"` // first-run carousel dismissed
+	LaunchAtLogin   bool   `json:"launchAtLogin"`
+	GlobalShortcut  string `json:"globalShortcut"` // open grid, e.g. "F3"
+	PopOutShortcut  string `json:"popOutShortcut"` // pop out Drop Bar, e.g. "F4"
+	GridColumns     int    `json:"gridColumns"`
+	GridSize        int    `json:"gridSize"` // 0-100 slider; ~33 = 100% scale
+	Theme           string `json:"theme"`    // system | dark ("always use dark mode")
+	AnimateGrid     bool   `json:"animateGrid"`
+	ShowKeyOverlays bool   `json:"showKeyOverlays"`
+	PlaySounds      bool   `json:"playSounds"`
+	// DragOverlay shows drag-target affordances while a file drag is in
+	// flight: the menu-bar drag-reveal tab (grid closed) and the "Drop to
+	// add" overlay over the grid (grid open) — Dropzone's "Show drag
+	// target overlay when dragging items".
+	DragOverlay       bool `json:"dragOverlay"`
+	DropBarKeepsItems bool `json:"dropBarKeepsItems"`
+	NotifyOnComplete  bool `json:"notifyOnComplete"`
+	AutoUpdateCheck   bool `json:"autoUpdateCheck"`
+	OnboardingSeen    bool `json:"onboardingSeen"` // first-run carousel dismissed
 	// LastUpdateNotified is the newest release version the user has already
 	// been notified about, so the automatic check nags once per version.
 	LastUpdateNotified string `json:"lastUpdateNotified,omitempty"`

@@ -92,6 +92,15 @@
   --panel-bg: rgb(48 48 48);
 }
 
+/* Drop-target overlay ("Drop to add") shown over the grid while a native
+   file drag is over it — see features/grid/DropTargetOverlay.tsx. */
+:root {
+  --drop-overlay-border: rgb(0 0 0 / 0.35);
+}
+:root.dark {
+  --drop-overlay-border: rgb(255 255 255 / 0.35);
+}
+
 /* Delete-mode jiggle for grid tiles while Option is held, echoing Dropzone's
    (and iOS's) icon-edit wobble. Tiles stagger via per-tile animation-delay. */
 @keyframes dz-jiggle {

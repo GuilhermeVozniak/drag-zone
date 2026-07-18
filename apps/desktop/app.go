@@ -40,6 +40,7 @@ const (
 	EventInputRequest     = "input:request"
 	EventWindowBeak       = "window:beak"
 	EventSharesChanged    = "shares:changed"
+	EventDragActive       = "drag:active"
 )
 
 // App wires the subsystems together and is the bindings facade exposed to the
@@ -238,6 +239,9 @@ func (a *App) startup(ctx context.Context) {
 			popped := a.poppedOut
 			a.dragMu.Unlock()
 			_ = a.SetDropBarPopOut(!popped)
+		},
+		DragActive: func(active bool) {
+			a.emit(EventDragActive, active)
 		},
 	})
 	platform.InitNative("DragZone")
