@@ -46,6 +46,9 @@ type Invocation struct {
 	// answered (false on cancel/timeout). Nil when the host provides no UI
 	// (e.g. CLI runs); actions must fall back to a safe default when it is nil.
 	Prompt func(title, message string, choices []string) (choice string, ok bool)
+	// AddDropBar stashes file paths in the Drop Bar. Nil when the host provides
+	// no Drop Bar (e.g. CLI runs); actions must nil-check before calling.
+	AddDropBar func(paths []string)
 }
 
 // Result is what an action produced, used for grid status and notifications.

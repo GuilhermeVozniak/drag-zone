@@ -186,6 +186,7 @@ func NewApp(services actions.Services) (*App, error) {
 		OnTask:           a.taskFeedback,
 		OnResultURL:      a.addRecentShare,
 		Prompt:           a.requestChoice,
+		AddDropBar:       func(paths []string) { _, _ = a.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: paths}) },
 	})
 	if err := storage.Load(recentsFile, &a.recentShares); err == nil && a.recentShares == nil {
 		a.recentShares = []Share{}

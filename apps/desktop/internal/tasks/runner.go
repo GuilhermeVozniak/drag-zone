@@ -42,6 +42,9 @@ type Config struct {
 	// Prompt lets a running action ask the user to choose among options (e.g.
 	// file-conflict resolution). Optional; nil disables prompting.
 	Prompt func(title, message string, choices []string) (string, bool)
+	// AddDropBar stashes file paths in the Drop Bar; it backs
+	// Invocation.AddDropBar. Optional; nil disables the capability.
+	AddDropBar func(paths []string)
 }
 
 // Runner executes actions and tracks their task states.
@@ -115,6 +118,7 @@ func (r *Runner) Run(ctx context.Context, act actions.Action, target model.Targe
 		inv.SaveOption = func(key, value string) { save(target.ID, key, value) }
 	}
 	inv.Prompt = r.cfg.Prompt
+	inv.AddDropBar = r.cfg.AddDropBar
 	go r.execute(ctx, exec, inv, id)
 	return id, nil
 }

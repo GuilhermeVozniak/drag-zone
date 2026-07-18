@@ -21,4 +21,5 @@ func RegisterAll(reg *actions.Registry) {
 	reg.Register(ConvertImages{})
 	reg.Register(RemoveImageMetadata{})
 	reg.Register(GoogleDriveUpload{})
+	reg.Register(Screenshot{})
 }

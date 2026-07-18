@@ -4,6 +4,7 @@
 import {
   AppWindow,
   Archive,
+  Camera,
   ClipboardCopy,
   File,
   Files,
@@ -24,6 +25,7 @@ import {
 const byName: Record<string, LucideIcon> = {
   "app-window": AppWindow,
   archive: Archive,
+  camera: Camera,
   "clipboard-copy": ClipboardCopy,
   file: File,
   files: Files,
@@ -83,6 +85,10 @@ const tileStyles: Record<string, TileStyle> = {
   "remove-metadata": {
     glyph: ImageOff,
     shape: "rounded-[14px] bg-gradient-to-b from-fuchsia-400 to-pink-600",
+  },
+  screenshot: {
+    glyph: Camera,
+    shape: "rounded-[14px] bg-gradient-to-b from-slate-400 to-slate-600",
   },
 };
 
