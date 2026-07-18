@@ -21,6 +21,11 @@ jobs:
       - run: bun run test
       - name: Desktop frontend tests (vitest)
         run: bun run --filter='@dragzone/desktop-frontend' test
+      - name: Desktop frontend E2E (playwright)
+        run: |
+          cd apps/desktop/frontend
+          bunx playwright install --with-deps chromium
+          bun run e2e
       - run: bun run build
       - name: E2E (landing page)
         run: cd apps/web && bunx playwright install --with-deps chromium && bun run e2e
