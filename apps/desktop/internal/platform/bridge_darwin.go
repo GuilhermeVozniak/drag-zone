@@ -19,6 +19,8 @@ import (
 type Handlers struct {
 	// StatusDropped is called with file paths dropped onto the menu bar icon.
 	StatusDropped func(paths []string)
+	// ServicesAddFiles is called with file paths sent via the macOS Services menu.
+	ServicesAddFiles func(paths []string)
 	// DragEnded is called when a drag-out session finishes; completed is true
 	// when the drop was accepted somewhere.
 	DragEnded func(completed bool)
@@ -58,6 +60,9 @@ func InitNative(windowTitle string) {
 	defer C.free(unsafe.Pointer(ct))
 	C.dz_init(ct)
 }
+
+// RegisterServices installs the app's macOS Services provider. Call after InitNative.
+func RegisterServices() { C.dz_register_services() }
 
 // ShowGrid shows the grid window under the status item. activate gives it
 // keyboard focus; passive display is used during drags.
@@ -219,6 +224,20 @@ func goStatusDropped(cjson *C.char) {
 	}
 	handlersMu.RLock()
 	fn := handlers.StatusDropped
+	handlersMu.RUnlock()
+	if fn != nil {
+		go fn(paths)
+	}
+}
+
+//export goServicesAddFiles
+func goServicesAddFiles(cjson *C.char) {
+	var paths []string
+	if err := json.Unmarshal([]byte(C.GoString(cjson)), &paths); err != nil || len(paths) == 0 {
+		return
+	}
+	handlersMu.RLock()
+	fn := handlers.ServicesAddFiles
 	handlersMu.RUnlock()
 	if fn != nil {
 		go fn(paths)

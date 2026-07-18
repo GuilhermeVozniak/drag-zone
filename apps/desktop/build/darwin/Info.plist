@@ -59,5 +59,25 @@
           {{end}}
         </array>
         {{end}}
+        <key>NSServices</key>
+        <array>
+            <dict>
+                <key>NSMenuItem</key>
+                <dict>
+                    <key>default</key>
+                    <string>Add to DragZone Drop Bar</string>
+                </dict>
+                <key>NSMessage</key>
+                <string>addToDropBar</string>
+                <key>NSPortName</key>
+                <string>dragzone</string>
+                <key>NSSendTypes</key>
+                <array>
+                    <string>public.file-url</string>
+                </array>
+                <key>NSRequiredContext</key>
+                <dict/>
+            </dict>
+        </array>
     </dict>
 </plist>

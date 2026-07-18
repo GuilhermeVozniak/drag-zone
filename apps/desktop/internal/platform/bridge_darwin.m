@@ -9,6 +9,7 @@
 
 // Callbacks implemented in Go (bridge_darwin.go).
 extern void goStatusDropped(const char *pathsJSON);
+extern void goServicesAddFiles(const char *pathsJSON);
 extern void goDragSessionEnded(bool completed);
 extern void goOpenSettings(void);
 extern void goGridVisibility(bool visible);
@@ -647,6 +648,49 @@ void dz_open_screen_recording_settings(void) {
         NSURL *url = [NSURL URLWithString:
             @"x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"];
         [NSWorkspace.sharedWorkspace openURL:url];
+    });
+}
+
+// --- macOS Services provider --------------------------------------------
+//
+// Registers an "Add to DragZone Drop Bar" entry in the system Services menu
+// (declared under NSServices in Info.plist). When invoked, macOS hands us the
+// selected files on a pasteboard; we forward their paths to the Go side, which
+// adds them to the Drop Bar (mirrors the menu-bar drop path, goStatusDropped).
+
+@interface DZServicesProvider : NSObject
+- (void)addToDropBar:(NSPasteboard *)pboard
+            userData:(NSString *)userData
+               error:(NSString **)error;
+@end
+
+@implementation DZServicesProvider
+
+- (void)addToDropBar:(NSPasteboard *)pboard
+            userData:(NSString *)userData
+               error:(NSString **)error {
+    NSArray<NSURL *> *urls =
+        [pboard readObjectsForClasses:@[ NSURL.class ]
+                              options:@{NSPasteboardURLReadingFileURLsOnlyKey : @YES}];
+    if (urls.count == 0) {
+        return;
+    }
+    char *json = jsonFromURLs(urls);
+    goServicesAddFiles(json);
+    free(json);
+}
+
+@end
+
+static DZServicesProvider *gServicesProvider = nil;
+
+void dz_register_services(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (gServicesProvider == nil) {
+            gServicesProvider = [[DZServicesProvider alloc] init];
+        }
+        [NSApp setServicesProvider:gServicesProvider];
+        NSUpdateDynamicServices();
     });
 }
 

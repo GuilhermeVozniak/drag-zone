@@ -217,6 +217,11 @@ func (a *App) startup(ctx context.Context) {
 				platform.ShowGrid(true)
 			}
 		},
+		ServicesAddFiles: func(paths []string) {
+			if _, err := a.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: paths}); err == nil {
+				platform.ShowGrid(true)
+			}
+		},
 		DragEnded: func(completed bool) {
 			a.dragMu.Lock()
 			itemID := a.draggingItem
@@ -252,6 +257,7 @@ func (a *App) startup(ctx context.Context) {
 		},
 	})
 	platform.InitNative("DragZone")
+	platform.RegisterServices()
 	a.applySettings(a.settings.Get())
 
 	// Background update checks (startup + daily), gated on the setting.

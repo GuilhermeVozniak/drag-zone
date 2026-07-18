@@ -21,6 +21,11 @@ void dz_start_drag(const char *pathsJSON);
 // Returns 0 on success.
 int dz_airdrop(const char *pathsJSON);
 
+// Installs the app's macOS Services provider ("Add to DragZone Drop Bar").
+// Reads file URLs from the Services pasteboard and forwards their paths to
+// goServicesAddFiles. Call once after dz_init.
+void dz_register_services(void);
+
 // Returns a malloc'd base64 PNG of the file's Finder icon at size*size
 // points, or NULL. Caller frees.
 char *dz_file_icon_png_base64(const char *path, int size);
