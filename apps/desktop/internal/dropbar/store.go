@@ -140,6 +140,43 @@ func (s *Store) CombineAll() error {
 	return s.save()
 }
 
+// Combine merges sourceID's paths into targetID, forming (or growing) a
+// stack: targetID keeps its position and gets a relabeled "N Items" name,
+// sourceID is removed. No-op if either ID is missing, they're the same item,
+// or either item isn't a file item (stacks only ever hold files).
+func (s *Store) Combine(targetID, sourceID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if targetID == sourceID {
+		return nil
+	}
+	targetIdx := -1
+	var target, source Item
+	foundSource := false
+	for i, it := range s.items {
+		if it.ID == targetID {
+			targetIdx = i
+			target = it
+		}
+		if it.ID == sourceID {
+			source = it
+			foundSource = true
+		}
+	}
+	if targetIdx == -1 || !foundSource {
+		return nil
+	}
+	if target.Kind != model.ItemFiles || source.Kind != model.ItemFiles {
+		return nil
+	}
+	merged := append(append([]string{}, target.Paths...), source.Paths...)
+	payload := model.Payload{Kind: model.ItemFiles, Paths: merged}
+	s.items[targetIdx].Paths = merged
+	s.items[targetIdx].Label = labelFor(payload)
+	s.items = slices.DeleteFunc(s.items, func(it Item) bool { return it.ID == sourceID })
+	return s.save()
+}
+
 // Rename sets a custom label; an empty name resets to the derived label.
 func (s *Store) Rename(id, name string) error {
 	s.mu.Lock()

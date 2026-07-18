@@ -108,7 +108,7 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: () => void }) {
     }
   };
 
-  useNativeFileDrop();
+  useNativeFileDrop(dropBarItems);
   useTargetShortcuts(targets);
 
   const specFor = (t: Target) => specs.find((s) => s.id === t.actionId);

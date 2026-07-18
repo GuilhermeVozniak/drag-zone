@@ -114,6 +114,22 @@ func (a *App) DropBarCombineAll() error {
 	return nil
 }
 
+// DropBarCombine merges sourceID's files into targetID's stack, used when one
+// Drop Bar item is dragged onto another.
+func (a *App) DropBarCombine(targetID, sourceID string) error {
+	if err := a.dropBar.Combine(targetID, sourceID); err != nil {
+		return err
+	}
+	a.emit(EventDropBarChanged, a.dropBar.List())
+	return nil
+}
+
+// OpenPath opens a file or folder with its default application, used to open
+// one thumbnail of a Drop Bar stack straight from the fanned-out preview.
+func (a *App) OpenPath(path string) error {
+	return a.services.OpenPath(path)
+}
+
 // DropBarCopyToClipboard copies an item's paths (or text) to the clipboard.
 func (a *App) DropBarCopyToClipboard(id string) error {
 	item, ok := a.dropBar.Get(id)

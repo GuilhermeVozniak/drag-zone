@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/context-menu";
 import { useFileIcon } from "@/hooks/useFileIcon";
 import { backend, type DropBarItem } from "@/lib/backend";
-import { DROPBAR_MIME } from "@/lib/dnd";
+import { DROPBAR_MIME, setDraggingDropBarItem } from "@/lib/dnd";
 import { RenameItemDialog } from "./RenameItemDialog";
 
 function itemIcon(item: DropBarItem) {
@@ -22,6 +22,9 @@ function itemIcon(item: DropBarItem) {
  * Fanned, photo-bordered thumbnails for a stack, like Dropzone's stacks.
  * Hovering the tile spreads the fan and lifts + highlights the front image, so
  * it's clear which stack you're about to grab. paths[0] is drawn on top.
+ * Each thumbnail is clickable: it opens that one file in the default app
+ * (Quick Look stays on the tile's own double-click), so a click must not
+ * bubble up into the tile's drag-out or Quick Look handlers.
  */
 function StackFan({ paths }: { paths: string[] }) {
   const first = useFileIcon(paths[0]);
@@ -30,16 +33,19 @@ function StackFan({ paths }: { paths: string[] }) {
   const layers = [
     {
       icon: third,
+      path: paths[2],
       base: "-rotate-[10deg] -translate-x-2",
       hover: "group-hover:-rotate-[18deg] group-hover:-translate-x-4 group-hover:-translate-y-0.5",
     },
     {
       icon: second,
+      path: paths[1],
       base: "rotate-[8deg] translate-x-2",
       hover: "group-hover:rotate-[18deg] group-hover:translate-x-4 group-hover:-translate-y-0.5",
     },
     {
       icon: first,
+      path: paths[0],
       base: "rotate-0",
       hover:
         "group-hover:-translate-y-1 group-hover:scale-[1.12] group-hover:ring-2 group-hover:ring-sky-400/80",
@@ -56,7 +62,11 @@ function StackFan({ paths }: { paths: string[] }) {
           src={`data:image/png;base64,${l.icon}`}
           alt=""
           draggable={false}
-          className={`absolute inset-0 m-auto max-h-[40px] max-w-[40px] rounded-[3px] border-2 border-white bg-white object-contain shadow-sm transition-transform duration-150 ease-out ${l.base} ${l.hover}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (l.path) backend.openPath(l.path);
+          }}
+          className={`pointer-events-auto absolute inset-0 m-auto max-h-[40px] max-w-[40px] cursor-pointer rounded-[3px] border-2 border-white bg-white object-contain shadow-sm transition-transform duration-150 ease-out ${l.base} ${l.hover}`}
         />
       ))}
     </div>
@@ -80,11 +90,15 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const isFiles = item.kind === "files";
   const [renaming, setRenaming] = useState<string | null>(null);
+  // Highlighted while another Drop Bar item's drag-out hovers this tile,
+  // signalling that releasing here combines the two into a stack.
+  const [combineHover, setCombineHover] = useState(false);
 
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
+          data-drop-id={item.id}
           draggable={!isFiles}
           onDragStart={(e) => {
             e.dataTransfer.setData(DROPBAR_MIME, item.id);
@@ -100,6 +114,10 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
             if (!start) return;
             if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) {
               dragStart.current = null;
+              // Mark this item as the in-flight drag-out source so a drop
+              // that lands back on a sibling tile (see useNativeFileDrop)
+              // combines the two instead of stashing a duplicate item.
+              setDraggingDropBarItem(item.id);
               backend.dragOut(item.id);
             }
           }}
@@ -109,7 +127,27 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
           onDoubleClick={() => {
             if (isFiles) backend.quickLook(item.paths ?? []);
           }}
-          className="group relative flex w-[64px] cursor-grab flex-col items-center gap-1 rounded-lg p-1.5 hover:bg-white/[0.08]"
+          // Best-effort visual hint for the combine drop target: WebKit
+          // forwards a native drag hovering the window as ordinary drag
+          // events. The actual combine happens through the native file-drop
+          // path (see useNativeFileDrop); this only drives the highlight.
+          onDragOver={(e) => {
+            if (isFiles) e.preventDefault();
+          }}
+          onDragEnter={(e) => {
+            if (isFiles) {
+              e.preventDefault();
+              setCombineHover(true);
+            }
+          }}
+          onDragLeave={() => setCombineHover(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setCombineHover(false);
+          }}
+          className={`group relative flex w-[64px] cursor-grab flex-col items-center gap-1 rounded-lg p-1.5 hover:bg-white/[0.08] ${
+            combineHover ? "bg-sky-500/20 ring-2 ring-sky-400/80" : ""
+          }`}
         >
           <div className="relative flex size-[52px] items-center justify-center">
             {count > 1 ? (

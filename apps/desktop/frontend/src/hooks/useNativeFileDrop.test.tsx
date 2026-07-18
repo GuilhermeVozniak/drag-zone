@@ -1,8 +1,8 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useNativeFileDrop } from "@/hooks/useNativeFileDrop";
-import { backend } from "@/lib/backend";
-import { setUIScale } from "@/lib/dnd";
+import { backend, type DropBarItem } from "@/lib/backend";
+import { getDraggingDropBarItem, setDraggingDropBarItem, setUIScale } from "@/lib/dnd";
 import { __emitFileDrop, __resetRuntimeStub } from "@/test/stubs/runtime";
 
 vi.mock("@/lib/backend");
@@ -10,6 +10,7 @@ vi.mock("@/lib/backend");
 beforeEach(() => {
   __resetRuntimeStub();
   setUIScale(1);
+  setDraggingDropBarItem(null);
   document.body.innerHTML = "";
   vi.clearAllMocks();
   vi.restoreAllMocks();
@@ -54,5 +55,54 @@ describe("useNativeFileDrop", () => {
     renderHook(() => useNativeFileDrop());
     drop("t123", []);
     expect(backend.playDropSound).not.toHaveBeenCalled();
+  });
+
+  describe("combining onto a sibling Drop Bar item", () => {
+    const items: DropBarItem[] = [
+      {
+        id: "target1",
+        kind: "files",
+        paths: ["/a.txt"],
+        label: "a.txt",
+        locked: false,
+      } as DropBarItem,
+      {
+        id: "source1",
+        kind: "files",
+        paths: ["/b.txt"],
+        label: "b.txt",
+        locked: false,
+      } as DropBarItem,
+    ];
+
+    it("combines when a drag-out is in flight and lands on another item's tile", () => {
+      renderHook(() => useNativeFileDrop(items));
+      setDraggingDropBarItem("source1");
+      drop("target1", ["/b.txt"]);
+      expect(backend.dropBar.combine).toHaveBeenCalledWith("target1", "source1");
+      expect(backend.dropBar.add).not.toHaveBeenCalled();
+    });
+
+    it("consumes the drag-out source so a later drop can't reuse it", () => {
+      renderHook(() => useNativeFileDrop(items));
+      setDraggingDropBarItem("source1");
+      drop("target1", ["/b.txt"]);
+      expect(getDraggingDropBarItem()).toBeNull();
+    });
+
+    it("falls back to stashing a new item when no drag-out is in flight", () => {
+      renderHook(() => useNativeFileDrop(items));
+      drop("target1", ["/external.txt"]);
+      expect(backend.dropBar.add).toHaveBeenCalledWith({ kind: "files", paths: ["/external.txt"] });
+      expect(backend.dropBar.combine).not.toHaveBeenCalled();
+    });
+
+    it("does not combine an item with itself", () => {
+      renderHook(() => useNativeFileDrop(items));
+      setDraggingDropBarItem("target1");
+      drop("target1", ["/a.txt"]);
+      expect(backend.dropBar.combine).not.toHaveBeenCalled();
+      expect(backend.dropBar.add).toHaveBeenCalledWith({ kind: "files", paths: ["/a.txt"] });
+    });
   });
 });

@@ -58,6 +58,66 @@ func TestAddLabelsAndStacks(t *testing.T) {
 	}
 }
 
+func TestCombine(t *testing.T) {
+	t.Setenv(storage.EnvDataDir, t.TempDir())
+	s := load(t)
+
+	target, _ := s.Add(model.Payload{Kind: model.ItemFiles, Paths: []string{"/tmp/a.txt"}})
+	source, _ := s.Add(model.Payload{Kind: model.ItemFiles, Paths: []string{"/tmp/b.txt"}})
+
+	if err := s.Combine(target.ID, source.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	items := s.List()
+	if len(items) != 1 {
+		t.Fatalf("after combine: %d items, want 1: %+v", len(items), items)
+	}
+	got := items[0]
+	if got.ID != target.ID {
+		t.Errorf("combined item id = %q, want target id %q (target keeps its slot)", got.ID, target.ID)
+	}
+	if len(got.Paths) != 2 || got.Paths[0] != "/tmp/a.txt" || got.Paths[1] != "/tmp/b.txt" {
+		t.Errorf("combined paths = %+v", got.Paths)
+	}
+	if got.Label != "2 Items" {
+		t.Errorf("combined label = %q, want %q", got.Label, "2 Items")
+	}
+	if _, ok := s.Get(source.ID); ok {
+		t.Error("source item still present after Combine")
+	}
+}
+
+func TestCombineNoOpCases(t *testing.T) {
+	t.Setenv(storage.EnvDataDir, t.TempDir())
+	s := load(t)
+
+	files, _ := s.Add(model.Payload{Kind: model.ItemFiles, Paths: []string{"/tmp/a.txt"}})
+	url, _ := s.Add(model.Payload{Kind: model.ItemURL, Text: "https://example.com"})
+
+	// Unknown target or source: no-op, no error.
+	if err := s.Combine("missing", files.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Combine(files.ID, "missing"); err != nil {
+		t.Fatal(err)
+	}
+	// Same item: no-op.
+	if err := s.Combine(files.ID, files.ID); err != nil {
+		t.Fatal(err)
+	}
+	// Non-files item on either side: no-op.
+	if err := s.Combine(files.ID, url.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Combine(url.ID, files.ID); err != nil {
+		t.Fatal(err)
+	}
+	if items := s.List(); len(items) != 2 {
+		t.Fatalf("no-op cases mutated the store: %+v", items)
+	}
+}
+
 func TestLockRenameClearPersistence(t *testing.T) {
 	t.Setenv(storage.EnvDataDir, t.TempDir())
 	s := load(t)

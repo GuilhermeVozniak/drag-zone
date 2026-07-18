@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DropBarTile } from "@/features/dropbar/DropBarTile";
@@ -103,5 +103,67 @@ describe("DropBarTile", () => {
     const removeButton = tile.querySelector("button") as HTMLElement;
     await user.click(removeButton);
     expect(onRemove).toHaveBeenCalledWith("i4");
+  });
+
+  it("clicking a fanned stack thumbnail opens that exact file in the default app", async () => {
+    (backend.fileIcon as ReturnType<typeof vi.fn>).mockResolvedValue("QQ==");
+    const user = userEvent.setup();
+    const item = filesItem({
+      paths: ["/unique/dropbartile/stack-front.png", "/unique/dropbartile/stack-back.png"],
+      label: "2 Items",
+      id: "stack1",
+    });
+    const { container } = render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    await waitFor(() => expect(container.querySelectorAll("img")).toHaveLength(2));
+    const imgs = container.querySelectorAll("img");
+
+    // paths[0] is drawn on top, i.e. last in DOM order (see StackFan).
+    await user.click(imgs[1]);
+    expect(backend.openPath).toHaveBeenCalledWith("/unique/dropbartile/stack-front.png");
+    await user.click(imgs[0]);
+    expect(backend.openPath).toHaveBeenCalledWith("/unique/dropbartile/stack-back.png");
+
+    // A plain click on a thumbnail must not start a drag-out or Quick Look.
+    expect(backend.dragOut).not.toHaveBeenCalled();
+    expect(backend.quickLook).not.toHaveBeenCalled();
+  });
+
+  it("mousedown+move on a fanned thumbnail still starts a native drag-out", async () => {
+    (backend.fileIcon as ReturnType<typeof vi.fn>).mockResolvedValue("QQ==");
+    const item = filesItem({
+      paths: ["/unique/dropbartile/stack-drag-a.png", "/unique/dropbartile/stack-drag-b.png"],
+      label: "2 Items",
+      id: "stack2",
+    });
+    const { container } = render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    await waitFor(() => expect(container.querySelectorAll("img")).toHaveLength(2));
+    const imgs = container.querySelectorAll("img");
+    fireEvent.mouseDown(imgs[0], { button: 0, clientX: 0, clientY: 0 });
+    fireEvent.mouseMove(imgs[0], { clientX: 20, clientY: 0 });
+    expect(backend.dragOut).toHaveBeenCalledWith("stack2");
+  });
+
+  it("highlights the tile while a combinable Drop Bar item drags over it", () => {
+    const item = filesItem({ paths: ["/unique/dropbartile/target.txt"], label: "target.txt" });
+    render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    const tile = screen.getByText("target.txt").parentElement as HTMLElement;
+    fireEvent.dragEnter(tile);
+    expect(tile.className).toContain("ring-2");
+    fireEvent.dragLeave(tile);
+    expect(tile.className).not.toContain("ring-2");
+  });
+
+  it("does not highlight a non-files tile on drag-over (only stacks of files combine)", () => {
+    const item = {
+      id: "i5",
+      kind: "url",
+      text: "https://y.test",
+      label: "y.test",
+      locked: false,
+    } as DropBarItem;
+    render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    const tile = screen.getByText("y.test").parentElement as HTMLElement;
+    fireEvent.dragEnter(tile);
+    expect(tile.className).not.toContain("ring-2");
   });
 });

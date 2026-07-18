@@ -32,6 +32,7 @@ export const backend = {
     setPopOut: afn(),
     separate: afn(),
     combineAll: afn(),
+    combine: afn(),
     copyToClipboard: afn(),
     reveal: afn(),
     paste: afn(),
@@ -45,6 +46,7 @@ export const backend = {
   dragOut: afn(),
   fileIcon: afn(),
   openURL: afn(),
+  openPath: afn(),
   window: { hide: afn(), quit: afn(), about: afn() },
 };
 

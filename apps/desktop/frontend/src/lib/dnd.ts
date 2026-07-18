@@ -19,6 +19,21 @@ export function setUIScale(s: number) {
   scale = s;
 }
 
+// Tracks the Drop Bar item currently mid a native drag-out session (see
+// DropBarTile's mousedown+move -> backend.dragOut). A native drag that never
+// leaves the window and lands back on a sibling Drop Bar tile still delivers
+// through the same OnFileDrop path as an external Finder drop (WebKit
+// forwards NSDraggingDestination hits as ordinary web file drops); tracking
+// the source here lets useNativeFileDrop tell "combine onto this tile" apart
+// from "stash these files as a new item".
+let draggingDropBarItemId: string | null = null;
+export function setDraggingDropBarItem(id: string | null) {
+  draggingDropBarItemId = id;
+}
+export function getDraggingDropBarItem(): string | null {
+  return draggingDropBarItemId;
+}
+
 export interface DropHandler {
   /** Called with the drop-id of the element under the cursor (or null). */
   onFiles(dropId: string | null, paths: string[]): void;

@@ -72,6 +72,7 @@ export const backend = {
     setPopOut: App.SetDropBarPopOut,
     separate: App.DropBarSeparate,
     combineAll: App.DropBarCombineAll,
+    combine: App.DropBarCombine,
     copyToClipboard: App.DropBarCopyToClipboard,
     reveal: App.DropBarReveal,
     paste: App.DropBarPaste,
@@ -97,6 +98,7 @@ export const backend = {
   dragOut: App.StartDragOut,
   fileIcon: App.FileIcon,
   openURL: App.OpenURL,
+  openPath: App.OpenPath,
   window: {
     hide: App.HideWindow,
     quit: App.Quit,
