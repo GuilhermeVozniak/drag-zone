@@ -93,7 +93,7 @@ on a separate paid third-party app (CleanShot X).**
 
 ## F. Genuine remaining gaps (honest)
 
-1. **Screenshot pixel-capture needs the user's one-time Screen Recording grant.** macOS gates all screen capture behind an interactive TCC permission that no program (DragZone, Dropzone, or an autonomous agent) can self-approve. The action's logic is unit-tested and its Drop-Bar delivery verified live; the pixel-grab lights up once the permission is granted. **Not automatable by design.**
+1. **Screenshot pixel-capture needs the user's one-time Screen Recording grant.** macOS gates all screen capture behind an interactive TCC permission that no program (DragZone, Dropzone, or an autonomous agent) can self-approve. As of v0.7.5 the Screenshot actions detect the missing grant (`CGPreflightScreenCaptureAccess`), fire the OS Allow/Deny prompt (`CGRequestScreenCaptureAccess`) instead of silently failing, and return a clear "Screen Recording permission is required" message — exactly Dropzone 4's behavior. The action's logic is unit-tested and its Drop-Bar delivery verified live; the pixel-grab lights up once the user clicks Allow. **The grant itself is not automatable by design.**
 2. **Native "feel" polish** — the exact animation of window resize, drag-out, and the overlay during a real Finder drag is native-runtime and best eyeballed on a Mac (like every native feature, and like Dropzone's own).
 3. **Pixel-exact visual match** — compact size, corners, and tile density are matched (v0.7.2–0.7.3); finer per-pixel tuning (exact tile sizes/spacing/colors vs a given screenshot) is an iterate-from-comparison process.
 4. **CleanShot X annotate action** — depends on a separate paid third-party app.
