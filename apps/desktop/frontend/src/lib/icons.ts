@@ -2,6 +2,7 @@
 // borderless, branded/colorful icons; we approximate with a colored shape
 // (circle or rounded square) behind a white glyph.
 import {
+  Aperture,
   AppWindow,
   Archive,
   Camera,
@@ -33,6 +34,7 @@ import {
 } from "lucide-react";
 
 const byName: Record<string, LucideIcon> = {
+  aperture: Aperture,
   "app-window": AppWindow,
   archive: Archive,
   camera: Camera,
@@ -153,6 +155,10 @@ const tileStyles: Record<string, TileStyle> = {
   "screenshot-sftp": {
     glyph: CloudUpload,
     shape: "rounded-[14px] bg-gradient-to-b from-indigo-400 to-blue-600",
+  },
+  flickr: {
+    glyph: Aperture,
+    shape: "rounded-[14px] bg-gradient-to-b from-pink-500 to-blue-500",
   },
 };
 

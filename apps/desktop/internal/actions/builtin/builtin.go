@@ -33,4 +33,5 @@ func RegisterAll(reg *actions.Registry) {
 	reg.Register(ImageSearch{})
 	reg.Register(RunAppleScript{})
 	reg.Register(ScreenshotSFTP{})
+	reg.Register(FlickrUpload{})
 }
