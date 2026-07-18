@@ -28,4 +28,7 @@ func RegisterAll(reg *actions.Registry) {
 	reg.Register(FinderPath{})
 	reg.Register(AppleNote{})
 	reg.Register(ZipEmail{})
+	reg.Register(MakeGIF{})
+	reg.Register(YouTubeDownloader{})
+	reg.Register(ImageSearch{})
 }

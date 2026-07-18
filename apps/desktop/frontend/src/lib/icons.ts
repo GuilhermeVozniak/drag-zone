@@ -8,6 +8,7 @@ import {
   ClipboardCopy,
   File,
   Files,
+  Film,
   Folder,
   Globe,
   HardDriveUpload,
@@ -21,10 +22,12 @@ import {
   NotebookPen,
   Printer,
   Route,
+  Search,
   Trash2,
   Type,
   Upload,
   Wifi,
+  Youtube,
 } from "lucide-react";
 
 const byName: Record<string, LucideIcon> = {
@@ -34,8 +37,10 @@ const byName: Record<string, LucideIcon> = {
   "clipboard-copy": ClipboardCopy,
   file: File,
   files: Files,
+  film: Film,
   folder: Folder,
   globe: Globe,
+  "image-search": Search,
   "image-up": ImageUp,
   link: Link,
   mail: Mail,
@@ -47,6 +52,7 @@ const byName: Record<string, LucideIcon> = {
   type: Type,
   upload: Upload,
   wifi: Wifi,
+  youtube: Youtube,
 };
 
 export function iconFor(name: string): LucideIcon {
@@ -123,6 +129,18 @@ const tileStyles: Record<string, TileStyle> = {
   "zip-email": {
     glyph: Mail,
     shape: "rounded-[14px] bg-gradient-to-b from-blue-400 to-indigo-600",
+  },
+  "make-gif": {
+    glyph: Film,
+    shape: "rounded-[14px] bg-gradient-to-b from-purple-400 to-fuchsia-600",
+  },
+  "youtube-dl": {
+    glyph: Youtube,
+    shape: "rounded-[14px] bg-gradient-to-b from-red-500 to-red-700",
+  },
+  "image-search": {
+    glyph: Search,
+    shape: "rounded-full bg-gradient-to-b from-cyan-400 to-blue-600",
   },
 };
 
