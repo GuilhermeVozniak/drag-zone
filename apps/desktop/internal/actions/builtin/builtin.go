@@ -31,4 +31,6 @@ func RegisterAll(reg *actions.Registry) {
 	reg.Register(MakeGIF{})
 	reg.Register(YouTubeDownloader{})
 	reg.Register(ImageSearch{})
+	reg.Register(RunAppleScript{})
+	reg.Register(ScreenshotSFTP{})
 }

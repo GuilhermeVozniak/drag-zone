@@ -6,6 +6,7 @@ import {
   Archive,
   Camera,
   ClipboardCopy,
+  CloudUpload,
   File,
   Files,
   Film,
@@ -22,6 +23,7 @@ import {
   NotebookPen,
   Printer,
   Route,
+  ScrollText,
   Search,
   Trash2,
   Type,
@@ -35,6 +37,7 @@ const byName: Record<string, LucideIcon> = {
   archive: Archive,
   camera: Camera,
   "clipboard-copy": ClipboardCopy,
+  "cloud-upload": CloudUpload,
   file: File,
   files: Files,
   film: Film,
@@ -48,6 +51,7 @@ const byName: Record<string, LucideIcon> = {
   "notebook-pen": NotebookPen,
   printer: Printer,
   route: Route,
+  "scroll-text": ScrollText,
   "trash-2": Trash2,
   type: Type,
   upload: Upload,
@@ -141,6 +145,14 @@ const tileStyles: Record<string, TileStyle> = {
   "image-search": {
     glyph: Search,
     shape: "rounded-full bg-gradient-to-b from-cyan-400 to-blue-600",
+  },
+  "run-applescript": {
+    glyph: ScrollText,
+    shape: "rounded-[14px] bg-gradient-to-b from-amber-400 to-yellow-600",
+  },
+  "screenshot-sftp": {
+    glyph: CloudUpload,
+    shape: "rounded-[14px] bg-gradient-to-b from-indigo-400 to-blue-600",
   },
 };
 

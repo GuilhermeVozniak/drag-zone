@@ -57,17 +57,7 @@ func (Screenshot) Clicked(ctx context.Context, inv actions.Invocation) (actions.
 	name := "Screenshot " + screenshotNow().Format("2006-01-02 at 15.04.05") + ".png"
 	dst := filepath.Join(dir, name)
 
-	var args []string
-	switch mode {
-	case "window":
-		args = []string{"-w", dst}
-	case "screen":
-		args = []string{dst}
-	default: // interactive
-		args = []string{"-i", dst}
-	}
-
-	if err := screenshotCmd(ctx, args...).Run(); err != nil {
+	if err := screenshotCmd(ctx, screencaptureArgs(mode, dst)...).Run(); err != nil {
 		return actions.Result{}, fmt.Errorf("capturing screenshot: %w", err)
 	}
 
@@ -88,6 +78,20 @@ func (Screenshot) Clicked(ctx context.Context, inv actions.Invocation) (actions.
 	}
 
 	return actions.Result{Message: "Screenshot saved — " + name}, nil
+}
+
+// screencaptureArgs builds the screencapture CLI arguments for the given
+// capture mode, writing the result to dst. Shared with ScreenshotSFTP so both
+// actions capture identically.
+func screencaptureArgs(mode, dst string) []string {
+	switch mode {
+	case "window":
+		return []string{"-w", dst}
+	case "screen":
+		return []string{dst}
+	default: // interactive
+		return []string{"-i", dst}
+	}
 }
 
 // expandHome expands a leading "~/" (or bare "~") to the user's home
