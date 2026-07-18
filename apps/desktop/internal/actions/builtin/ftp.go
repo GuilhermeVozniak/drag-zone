@@ -67,7 +67,19 @@ func (FTPUpload) Dropped(ctx context.Context, inv actions.Invocation) (actions.R
 		}
 	}
 
-	entries, total, err := collectUploadEntries(inv.Payload.Paths)
+	// Holding Option zips the drop into a single archive before upload, like
+	// Dropzone's S3 and FTP actions.
+	paths := inv.Payload.Paths
+	if inv.Payload.HasModifier("Option") {
+		zipPath, zipDir, err := zipForUpload(paths)
+		if err != nil {
+			return actions.Result{}, fmt.Errorf("zipping before upload: %w", err)
+		}
+		defer os.RemoveAll(zipDir)
+		paths = []string{zipPath}
+	}
+
+	entries, total, err := collectUploadEntries(paths)
 	if err != nil {
 		return actions.Result{}, err
 	}
@@ -132,12 +144,33 @@ type remoteFS interface {
 	close() error
 }
 
-// connectRemote dials the server using the selected protocol.
-func connectRemote(ctx context.Context, protocol, host, port, user, pass string) (remoteFS, error) {
+// dialFTPServer and dialSSHServer wrap the underlying network dials behind
+// package-level variables, so tests can verify connectRemote's protocol
+// dispatch (which one gets called) and its dial-failure wrapping without a
+// live FTP/SFTP server or a real network handshake; production code never
+// reassigns them.
+var dialFTPServer = func(ctx context.Context, addr string) (*ftp.ServerConn, error) {
+	return ftp.Dial(addr, ftp.DialWithContext(ctx), ftp.DialWithTimeout(15*time.Second))
+}
+
+var dialSSHServer = func(addr, user, pass string) (*ssh.Client, error) {
+	return ssh.Dial("tcp", addr, &ssh.ClientConfig{
+		User:            user,
+		Auth:            []ssh.AuthMethod{ssh.Password(pass)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         15 * time.Second,
+	})
+}
+
+// connectRemote dials the server using the selected protocol. It is a
+// package-level variable (rather than a plain func) so tests can substitute a
+// fake remoteFS in place of a live network dial; production code never
+// reassigns it, so real invocations behave exactly as the func body below.
+var connectRemote = func(ctx context.Context, protocol, host, port, user, pass string) (remoteFS, error) {
 	addr := net.JoinHostPort(host, port)
 	switch protocol {
 	case "ftp":
-		conn, err := ftp.Dial(addr, ftp.DialWithContext(ctx), ftp.DialWithTimeout(15*time.Second))
+		conn, err := dialFTPServer(ctx, addr)
 		if err != nil {
 			return nil, err
 		}
@@ -147,12 +180,7 @@ func connectRemote(ctx context.Context, protocol, host, port, user, pass string)
 		}
 		return &ftpFS{conn: conn}, nil
 	default: // sftp
-		sshConn, err := ssh.Dial("tcp", addr, &ssh.ClientConfig{
-			User:            user,
-			Auth:            []ssh.AuthMethod{ssh.Password(pass)},
-			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-			Timeout:         15 * time.Second,
-		})
+		sshConn, err := dialSSHServer(addr, user, pass)
 		if err != nil {
 			return nil, err
 		}
