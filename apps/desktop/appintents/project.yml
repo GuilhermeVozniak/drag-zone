@@ -1,0 +1,57 @@
+# xcodegen spec for the DragZone App Intents extension.
+#
+# Generates DragZoneIntents.xcodeproj, an Xcode "App Extension" project for
+# apps/desktop/appintents/DragZoneIntents.swift. Building this target via
+# `xcodebuild` (rather than raw `swiftc` + a standalone
+# `appintentsmetadataprocessor` call) wires the metadata processor into
+# Xcode's own build graph, so `Metadata.appintents` gets produced reliably —
+# including on CI runners where the standalone processor invocation fails
+# with `swift-reflection-test: No such file or directory`.
+#
+# Regenerate with (from this directory):
+#   xcodegen generate
+# build/build-appintents.sh does this automatically. The generated
+# .xcodeproj and any DerivedData are gitignored - never commit them.
+name: DragZoneIntents
+options:
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "13.0"
+targets:
+  DragZoneIntents:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: DragZoneIntents.swift
+    settings:
+      base:
+        PRODUCT_NAME: DragZoneIntents
+        PRODUCT_BUNDLE_IDENTIFIER: com.wails.dragzone.intents
+        # Use the hand-maintained Info.plist as-is (NSExtension /
+        # NSExtensionPointIdentifier = com.apple.appintents-extension, the
+        # IntentsSupported list, etc.) rather than having xcodegen/Xcode
+        # generate one.
+        INFOPLIST_FILE: Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        # Swift 5 language mode (matches the previous swiftc build, which
+        # compiled without a language-mode flag and thus defaulted to Swift
+        # 5): Swift 6 strict-concurrency checking flags AppIntents' own
+        # static `title`/`description` protocol requirements as unsafe
+        # nonisolated global state, which is an SDK-level issue unrelated to
+        # this extension's code.
+        SWIFT_VERSION: "5.0"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        # Universal build: both slices in one xcodebuild invocation.
+        ARCHS: "arm64 x86_64"
+        VALID_ARCHS: "arm64 x86_64"
+        ONLY_ACTIVE_ARCH: NO
+        # Built unsigned here; build-appintents.sh codesigns the .appex
+        # itself after embedding it into dragzone.app.
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
+        SKIP_INSTALL: NO
+    dependencies:
+      - sdk: AppIntents.framework
+      - sdk: Foundation.framework

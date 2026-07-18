@@ -22,23 +22,21 @@ Native window behavior; verify on a real Mac like the other native features.
 **Shortcuts / App Intents integration — now built in.** A Swift App Intents
 extension (`apps/desktop/appintents/DragZoneIntents.swift`) ships two actions,
 **Add to Drop Bar** and **Run Dropzone Action**, that shell out to the `dz`
-CLI. `build/build-appintents.sh` compiles it universal, runs
-`appintentsmetadataprocessor` to emit the `Metadata.appintents` discovery
-bundle (both intents present), embeds the signed `.appex` into
-`DragZone.app/Contents/PlugIns/`, and the release workflow builds + Developer-ID
-signs + notarizes it with the app.
+CLI. `build/build-appintents.sh` runs `xcodegen generate` against
+`appintents/project.yml` to materialize a real Xcode App Extension target,
+builds it with `xcodebuild` (universal, Release, unsigned), confirms the
+resulting `.appex` contains `Metadata.appintents` (both intents present),
+embeds the signed `.appex` into `DragZone.app/Contents/PlugIns/`, and the
+release workflow builds + Developer-ID signs + notarizes it with the app.
 
-**Known limitation (CI toolchain):** `appintentsmetadataprocessor` runs
-standalone on a modern local Xcode (26.x) but FAILS on the GitHub macOS
-runner's Xcode (`swift-reflection-test error`). The release step is therefore
-best-effort: **CI-built release binaries ship the extension embedded + signed
-but WITHOUT `Metadata.appintents`, so the Shortcuts actions do not appear in
-that binary.** A local build (`wails build && bash build/build-appintents.sh`)
-generates the metadata and is fully functional. To make CI releases' Shortcuts
-integration work, the extension needs a real Xcode project built via
-`xcodebuild` (which wires the metadata processor into the build graph
-natively), or a runner pinned to a compatible Xcode — a follow-up effort.
-Everything else (compile / embed / sign / local metadata) is verified.
+Building through `xcodebuild` against a real Xcode project — rather than the
+earlier raw-`swiftc` + standalone-`appintentsmetadataprocessor` approach —
+fixes the previous CI-toolchain limitation (`swift-reflection-test: No such
+file or directory` on GitHub's macOS runner): Xcode's own build graph wires
+the metadata processor in as an `ExtractAppIntentsMetadata` build phase, the
+same path every App-Intents-using macOS app takes, and `build-appintents.sh`
+hard-fails if `Metadata.appintents` is ever missing rather than shipping
+silently without it.
 
 **Parity: DragZone now reproduces Dropzone 4's full surface** — 29 built-in
 actions, screenshot capture → Drop Bar, floating always-on-top Drop Bar with

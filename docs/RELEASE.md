@@ -79,11 +79,14 @@ tab; on success a Release with the notarized `DragZone-<version>.dmg` appears.
 ## Notes & troubleshooting
 
 - **App Intents / Shortcuts extension:** `build/build-appintents.sh`
-  compiles `appintents/DragZoneIntents.swift` ("Add to Drop Bar" / "Run
-  Dropzone Action") and embeds it as `DragZoneIntents.appex` in
-  `dragzone.app/Contents/PlugIns/`. `release.yml` runs it after `wails
-  build` and the identity import, before the "Sign app" step. Locally, run
-  it by hand after `wails build`:
+  generates a real Xcode App Extension project from
+  `appintents/project.yml` (via `xcodegen`), builds it with `xcodebuild`
+  ("Add to Drop Bar" / "Run Dropzone Action", universal, unsigned), verifies
+  the resulting `.appex` contains `Metadata.appintents`, and embeds it as
+  `DragZoneIntents.appex` in `dragzone.app/Contents/PlugIns/`. `release.yml`
+  installs `xcodegen` and runs the script after `wails build` and the
+  identity import, before the "Sign app" step. Locally, run it by hand after
+  `wails build`:
   ```sh
   cd apps/desktop
   wails build
@@ -92,8 +95,14 @@ tab; on success a Release with the notarized `DragZone-<version>.dmg` appears.
   Pass a Developer ID identity (e.g. `bash build/build-appintents.sh
   "Developer ID Application: ..."`) to sign it for real distribution; the
   release workflow's later `codesign --deep` over the whole app re-seals it
-  regardless. Whether the actions actually register in the Shortcuts app is
-  a manual, logged-in-session check — it isn't exercised by CI.
+  regardless. Building via `xcodebuild` against a real Xcode target (rather
+  than raw `swiftc` + a standalone `appintentsmetadataprocessor` call) is
+  what makes `Metadata.appintents` generation reliable on CI runners, since
+  Xcode's own build graph drives the metadata processor instead of a
+  hand-assembled invocation. Whether the actions actually register in the
+  Shortcuts app is a manual, logged-in-session check — it isn't exercised by
+  CI. Requires `xcodegen` on PATH (`brew install xcodegen`); the script
+  installs it automatically if missing.
 - **Universal cross-compile:** the app builds `darwin/universal` on an
   arm64 runner. If cgo cross-compilation to `amd64` ever breaks, fall back to
   `-platform darwin/arm64` in `release.yml` (Apple-silicon only).
