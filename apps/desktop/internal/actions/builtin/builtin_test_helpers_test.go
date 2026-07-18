@@ -5,7 +5,9 @@ type recServices struct {
 	Clipboard    string
 	ClipboardErr error
 	Trashed      [][]string
+	TrashErr     error
 	AirDropped   [][]string
+	AirDropErr   error
 	Notes        []string
 	Sounds       []string
 	Opened       []string
@@ -25,5 +27,17 @@ func (r *recServices) PlaySound(name string)          { r.Sounds = append(r.Soun
 func (r *recServices) OpenURL(u string) error         { r.Opened = append(r.Opened, u); return nil }
 func (r *recServices) OpenPath(p string) error        { r.Opened = append(r.Opened, p); return nil }
 func (r *recServices) Reveal(p string) error          { r.Opened = append(r.Opened, p); return nil }
-func (r *recServices) Trash(p []string) error         { r.Trashed = append(r.Trashed, p); return nil }
-func (r *recServices) AirDrop(p []string) error       { r.AirDropped = append(r.AirDropped, p); return nil }
+func (r *recServices) Trash(p []string) error {
+	if r.TrashErr != nil {
+		return r.TrashErr
+	}
+	r.Trashed = append(r.Trashed, p)
+	return nil
+}
+func (r *recServices) AirDrop(p []string) error {
+	if r.AirDropErr != nil {
+		return r.AirDropErr
+	}
+	r.AirDropped = append(r.AirDropped, p)
+	return nil
+}
