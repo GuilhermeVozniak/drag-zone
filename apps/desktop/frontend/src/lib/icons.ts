@@ -13,8 +13,10 @@ import {
   HardDriveUpload,
   Image,
   ImageOff,
+  ImageUp,
   Link,
   type LucideIcon,
+  Minimize2,
   NotebookPen,
   Printer,
   Route,
@@ -33,7 +35,9 @@ const byName: Record<string, LucideIcon> = {
   files: Files,
   folder: Folder,
   globe: Globe,
+  "image-up": ImageUp,
   link: Link,
+  "minimize-2": Minimize2,
   "notebook-pen": NotebookPen,
   printer: Printer,
   route: Route,
@@ -101,6 +105,18 @@ const tileStyles: Record<string, TileStyle> = {
   "apple-note": {
     glyph: NotebookPen,
     shape: "rounded-full bg-gradient-to-b from-amber-300 to-yellow-500",
+  },
+  imgbb: {
+    glyph: ImageUp,
+    shape: "rounded-[14px] bg-gradient-to-b from-pink-400 to-rose-600",
+  },
+  "short-io": {
+    glyph: Link,
+    shape: "rounded-full bg-gradient-to-b from-teal-400 to-emerald-600",
+  },
+  tinify: {
+    glyph: Minimize2,
+    shape: "rounded-[14px] bg-gradient-to-b from-sky-400 to-indigo-600",
   },
 };
 
