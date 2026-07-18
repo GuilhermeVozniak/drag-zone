@@ -414,9 +414,16 @@ export async function RemoveTarget(id: string): Promise<void> {
 }
 
 export async function MoveTarget(id: string, position: number): Promise<void> {
-  const t = targets.find((x) => x.id === id);
-  if (!t) return;
-  t.position = position;
+  const ordered = targets.slice().sort((a, b) => a.position - b.position);
+  const idx = ordered.findIndex((x) => x.id === id);
+  if (idx < 0) return;
+  const [t] = ordered.splice(idx, 1);
+  const clamped = Math.max(0, Math.min(position, ordered.length));
+  ordered.splice(clamped, 0, t);
+  ordered.forEach((x, i) => {
+    x.position = i;
+  });
+  targets = ordered;
   emitGrid();
 }
 
