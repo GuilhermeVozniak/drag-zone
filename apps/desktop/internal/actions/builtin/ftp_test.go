@@ -229,15 +229,18 @@ func TestFTPUploadOptionModifierZipsFirst(t *testing.T) {
 	fr := &fakeRemote{}
 	withFakeRemote(t, fr)
 
-	_, err := FTPUpload{}.Dropped(context.Background(), actions.Invocation{
-		Target: model.Target{Options: ftpBaseOptions()},
+	svc := &recServices{}
+	opts := ftpBaseOptions()
+	opts["url_prefix"] = "https://cdn.example.com/uploads/"
+	res, err := FTPUpload{}.Dropped(context.Background(), actions.Invocation{
+		Target: model.Target{Options: opts},
 		Payload: model.Payload{
 			Kind:      model.ItemFiles,
 			Paths:     []string{filepath.Join(dir, "a.txt"), filepath.Join(dir, "b.txt")},
 			Modifiers: []string{"Option"},
 		},
 		Progress: nullProgress{},
-		Services: &recServices{},
+		Services: svc,
 	})
 	if err != nil {
 		t.Fatalf("Dropped: %v", err)
@@ -248,6 +251,24 @@ func TestFTPUploadOptionModifierZipsFirst(t *testing.T) {
 	}
 	if filepath.Ext(fr.uploads[0]) != ".zip" {
 		t.Errorf("uploaded path %q is not a .zip", fr.uploads[0])
+	}
+
+	// The url_prefix result (and clipboard copy) must point at the uploaded
+	// .zip, not at either original file — regression test for a bug where the
+	// URL was built from inv.Payload.Paths[0] (the original dropped file)
+	// instead of the actual uploaded key.
+	wantURL := "https://cdn.example.com/uploads/" + fr.uploads[0]
+	if res.URL != wantURL {
+		t.Errorf("URL = %q, want %q", res.URL, wantURL)
+	}
+	if !strings.HasSuffix(res.URL, ".zip") {
+		t.Errorf("URL = %q, want it to end with the uploaded .zip name", res.URL)
+	}
+	if strings.Contains(res.URL, "a.txt") || strings.Contains(res.URL, "b.txt") {
+		t.Errorf("URL = %q, should not reference the original dropped file name", res.URL)
+	}
+	if svc.Clipboard != wantURL {
+		t.Errorf("clipboard = %q, want %q", svc.Clipboard, wantURL)
 	}
 
 	body := fr.bodies[fr.uploads[0]]

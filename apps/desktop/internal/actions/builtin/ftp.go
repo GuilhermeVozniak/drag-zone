@@ -112,7 +112,7 @@ func (FTPUpload) Dropped(ctx context.Context, inv actions.Invocation) (actions.R
 
 	result := actions.Result{Message: fmt.Sprintf("Uploaded %d item(s) to %s", len(inv.Payload.Paths), host)}
 	if prefix := inv.Target.Option("url_prefix", ""); prefix != "" {
-		result.URL = strings.TrimRight(prefix, "/") + "/" + filepath.Base(inv.Payload.Paths[0])
+		result.URL = strings.TrimRight(prefix, "/") + "/" + filepath.Base(paths[0])
 		if err := inv.Services.CopyToClipboard(result.URL); err != nil {
 			return actions.Result{}, fmt.Errorf("copying URL to clipboard: %w", err)
 		}
