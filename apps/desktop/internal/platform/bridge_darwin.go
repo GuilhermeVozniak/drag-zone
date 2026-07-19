@@ -178,6 +178,15 @@ func SetPinned(pinned bool) { C.dz_set_pinned(C.bool(pinned)) }
 // window behavior and position memory across launches.
 func SetPopoutFloating(on bool) { C.dz_set_popout_floating(C.bool(on)) }
 
+// SetSettingsMode flips the shared window between the frameless popover grid
+// chrome and a regular titled app window hosting the settings UI (centered,
+// opaque, brought to the front). Hide-on-deactivate is suspended while on.
+func SetSettingsMode(on bool) { C.dz_set_settings_mode(C.bool(on)) }
+
+// SetDockVisible shows or hides the Dock icon (Regular vs Accessory
+// activation policy).
+func SetDockVisible(visible bool) { C.dz_set_dock_visible(C.bool(visible)) }
+
 // StripImageMetadata rewrites src to dst without EXIF/GPS/TIFF/IPTC metadata.
 func StripImageMetadata(src, dst string) error {
 	cs, cd := C.CString(src), C.CString(dst)

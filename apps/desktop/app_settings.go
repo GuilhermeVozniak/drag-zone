@@ -40,16 +40,83 @@ func (a *App) SetSettings(s config.Settings) error {
 	return nil
 }
 
+// --- Settings window mode ---
+//
+// Settings lives in the app's single shared window, flipped into a regular
+// titled app window (centered, opaque, Dock icon visible) instead of a
+// dialog inside the popover grid. While settings is open the grid is
+// unavailable; closing restores the popover chrome and hides the window.
+
+// OpenSettings enters settings mode and shows the settings UI on the given
+// tab ("general", "addons", "cli", "updates"). Bound to the frontend (gear
+// menu, "Get More Actions…") and called from the tray's Settings… item.
+func (a *App) OpenSettings(tab string) {
+	if tab == "" {
+		tab = "general"
+	}
+	a.dragMu.Lock()
+	popped := a.poppedOut
+	a.settingsOpen = true
+	a.dragMu.Unlock()
+	if popped {
+		// The popped-out Drop Bar owns the window's frame/floating state;
+		// dock it back before re-chroming for settings.
+		_ = a.SetDropBarPopOut(false)
+	}
+	platform.SetDockVisible(true)
+	platform.SetSettingsMode(true)
+	a.emit(EventOpenSettings, tab)
+}
+
+// CloseSettings leaves settings mode: hides the window, restores the
+// popover grid chrome, and removes the Dock icon. Bound to the frontend
+// (close button, Escape) and to the native window's close button via
+// beforeClose.
+func (a *App) CloseSettings() {
+	a.dragMu.Lock()
+	if !a.settingsOpen {
+		a.dragMu.Unlock()
+		return
+	}
+	a.settingsOpen = false
+	a.dragMu.Unlock()
+	platform.HideGrid() // hide first so the chrome restore happens off-screen
+	platform.SetSettingsMode(false)
+	a.applySettings(a.settings.Get()) // re-apply the (possibly changed) grid width
+	platform.SetDockVisible(false)
+	a.emit(EventCloseSettings)
+}
+
+// settingsMode reports whether the shared window is hosting settings.
+func (a *App) settingsMode() bool {
+	a.dragMu.Lock()
+	defer a.dragMu.Unlock()
+	return a.settingsOpen
+}
+
+// beforeClose intercepts the native close button (Wails OnBeforeClose).
+// While settings is open it just exits settings mode; otherwise the
+// close/quit proceeds (tray Quit, the Quit binding).
+func (a *App) beforeClose(_ context.Context) bool {
+	if a.settingsMode() {
+		a.CloseSettings()
+		return true
+	}
+	return false
+}
+
 // applySettings pushes setting-dependent state into the native layer.
 func (a *App) applySettings(s config.Settings) {
 	platform.SetHotkeyF(parseFKey(s.GlobalShortcut), platform.HotkeySlotGrid)
 	platform.SetHotkeyF(parseFKey(s.PopOutShortcut), platform.HotkeySlotPopOut)
 	platform.SetDragOverlayEnabled(s.DragOverlay)
-	if a.ctx != nil {
+	if a.ctx != nil && !a.settingsMode() {
 		// Width scales with the grid-size setting; height is owned by the
 		// frontend's content-driven auto-resize (see ResizeWindow), so it is
 		// preserved here rather than reset to the small startup default —
-		// otherwise every settings save would collapse the window.
+		// otherwise every settings save would collapse the window. Skipped in
+		// settings mode, where the settings window owns its own size;
+		// CloseSettings re-applies on exit.
 		scale := s.Scale()
 		_, height := runtime.WindowGetSize(a.ctx)
 		runtime.WindowSetSize(a.ctx, int(float64(windowWidth)*scale), height)
@@ -127,8 +194,12 @@ func (a *App) ShowWindow() {
 // applySettings, which scales it) and is preserved here rather than reset to
 // the windowWidth constant — otherwise every auto-resize would revert a
 // non-default grid size's width scaling. Only the height grows/shrinks to
-// the content, clamped to a sane range.
+// the content, clamped to a sane range. Ignored in settings mode, where the
+// settings window owns its size.
 func (a *App) ResizeWindow(height int) {
+	if a.settingsMode() {
+		return
+	}
 	const minH, maxH = 120, 640
 	if height < minH {
 		height = minH
@@ -141,6 +212,11 @@ func (a *App) ResizeWindow(height int) {
 }
 
 func (a *App) Quit() {
+	// runtime.Quit routes through beforeClose, which swallows the request
+	// while settings is open — a real quit must leave settings mode first.
+	a.dragMu.Lock()
+	a.settingsOpen = false
+	a.dragMu.Unlock()
 	runtime.Quit(a.ctx)
 }
 

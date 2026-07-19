@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SettingsDialog } from "@/features/settings/SettingsDialog";
+import { SettingsView } from "@/features/settings/SettingsView";
 import { type AddonInfo, backend, type Settings } from "@/lib/backend";
 
 vi.mock("@/lib/backend");
@@ -36,16 +36,22 @@ beforeEach(() => {
   vi.mocked(backend.cli.installed).mockResolvedValue(true as never);
 });
 
-describe("SettingsDialog", () => {
+describe("SettingsView", () => {
   it("shows the General tab by default", async () => {
-    render(<SettingsDialog open onOpenChange={vi.fn()} />);
+    render(<SettingsView />);
     await waitFor(() => expect(screen.getByText("Grid size")).toBeInTheDocument());
     expect(screen.queryByText("Zip It")).not.toBeInTheDocument();
   });
 
+  it("opens on the requested tab", async () => {
+    render(<SettingsView tab="addons" />);
+    await waitFor(() => expect(screen.getByText("Zip It")).toBeInTheDocument());
+    expect(screen.queryByText("Grid size")).not.toBeInTheDocument();
+  });
+
   it("switches to the Add-ons tab and shows the catalogue", async () => {
     const user = userEvent.setup();
-    render(<SettingsDialog open onOpenChange={vi.fn()} />);
+    render(<SettingsView />);
     await waitFor(() => expect(screen.getByText("Grid size")).toBeInTheDocument());
 
     await user.click(screen.getByRole("tab", { name: "Add-on Actions" }));
@@ -55,7 +61,7 @@ describe("SettingsDialog", () => {
 
   it("switches to the Command Line tab and shows CLI status", async () => {
     const user = userEvent.setup();
-    render(<SettingsDialog open onOpenChange={vi.fn()} />);
+    render(<SettingsView />);
     await waitFor(() => expect(screen.getByText("Grid size")).toBeInTheDocument());
 
     await user.click(screen.getByRole("tab", { name: "Command Line" }));
@@ -67,12 +73,21 @@ describe("SettingsDialog", () => {
 
   it("persists a settings change through the backend", async () => {
     const user = userEvent.setup();
-    render(<SettingsDialog open onOpenChange={vi.fn()} />);
+    render(<SettingsView />);
     await waitFor(() => expect(screen.getByText("Grid size")).toBeInTheDocument());
 
     await user.click(switchInRow("Always use dark mode"));
     await waitFor(() =>
       expect(backend.settings.set).toHaveBeenCalledWith(expect.objectContaining({ theme: "dark" })),
     );
+  });
+
+  it("closes via the header button through the backend", async () => {
+    const user = userEvent.setup();
+    render(<SettingsView />);
+    await waitFor(() => expect(screen.getByText("Grid size")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: "Close Settings" }));
+    expect(backend.settings.close).toHaveBeenCalled();
   });
 });

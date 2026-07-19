@@ -79,7 +79,8 @@ Drop Bar).
 | `dropbar:changed` | `Item[]` | shelf contents changed |
 | `tasks:changed` | `TaskState[]` | task started/progressed/finished |
 | `specs:changed` | `ActionSpec[]` | bundle installed/developed |
-| `settings:open` | — | open the settings dialog |
+| `settings:open` | tab | enter settings mode on the given tab |
+| `settings:close` | — | settings mode closed |
 | `window:visibility` | `bool` | native show/hide of the grid |
 | `dropbar:popout` | `bool` | pop-out mode toggled |
 | `input:request` | `{id,title,prompt}` | script inputbox needs an answer (reply via `AnswerInputRequest`) |
@@ -105,11 +106,13 @@ hold credentials.
 ## Native bridge (internal/platform)
 
 `bridge_darwin.{h,m,go}` exposes: status item + drag detection, activation
-policy, grid show/hide/position, `NSDraggingSession` drag-out, AirDrop via
-`NSSharingService`, Finder icons via `NSWorkspace` (base64 PNG), login item
-via `SMAppService`, Carbon F-key global hotkey, Option-key state, pinned
-mode, and ImageIO metadata stripping. Callbacks re-enter Go through
-`//export`ed functions and are dispatched on new goroutines.
+policy (Dock show/hide), grid show/hide/position, settings window mode
+(re-chromes the shared window into a titled app window and back),
+`NSDraggingSession` drag-out, AirDrop via `NSSharingService`, Finder icons
+via `NSWorkspace` (base64 PNG), login item via `SMAppService`, Carbon F-key
+global hotkey, Option-key state, pinned mode, and ImageIO metadata
+stripping. Callbacks re-enter Go through `//export`ed functions and are
+dispatched on new goroutines.
 `services_darwin.go` implements `actions.Services` with system tools
 (pbcopy/pbpaste, osascript, open, lp, qlmanage via the facade).
 
@@ -118,5 +121,7 @@ mode, and ImageIO metadata stripping. Callbacks re-enter Go through
 - SFTP uses `ssh.InsecureIgnoreHostKey` (personal-tool tradeoff).
 - Credentials live in `targets.json` (0600); Keychain is future work.
 - The pop-out Drop Bar reuses the single Wails window (v2 has no multi-window)
-  by switching the UI into a compact pinned mode.
+  by switching the UI into a compact pinned mode. Settings also reuses it:
+  opening settings flips the window into a titled, centered app window
+  (Dock icon shown) and back on close — the grid is unavailable meanwhile.
 - `pashua` script dialogs are unsupported; `inputbox` is.

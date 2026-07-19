@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { PopoutBar } from "@/features/dropbar/PopoutBar";
 import { GridPanel } from "@/features/grid/GridPanel";
 import { Onboarding } from "@/features/onboarding/Onboarding";
-import { SettingsDialog } from "@/features/settings/SettingsDialog";
+import { SettingsView } from "@/features/settings/SettingsView";
 import { InputRequestDialog } from "@/features/tasks/InputRequestDialog";
 import { useSettings } from "@/hooks/useBackend";
 import { backend, events, uiScale } from "@/lib/backend";
@@ -16,9 +16,14 @@ function App() {
   const [settingsTab, setSettingsTab] = useState("general");
   const [poppedOut, setPoppedOut] = useState(false);
 
+  // Opening settings is a backend round-trip: the native layer flips the
+  // shared window into settings mode (titled, centered, Dock icon visible)
+  // and emits settings:open back, which is what actually mounts the view.
   const openSettings = (tab?: string) => {
-    setSettingsTab(tab ?? "general");
-    setSettingsOpen(true);
+    void backend.settings.open(tab);
+  };
+  const closeSettings = () => {
+    void backend.settings.close();
   };
   const [settings, setSettings] = useSettings();
 
@@ -48,24 +53,38 @@ function App() {
   }, [scale]);
 
   useEffect(() => {
-    const offSettings = events.onOpenSettings(() => openSettings("general"));
+    const offOpen = events.onOpenSettings((tab) => {
+      setSettingsTab(tab || "general");
+      setSettingsOpen(true);
+    });
+    const offClose = events.onCloseSettings(() => setSettingsOpen(false));
     const offPopout = events.onDropBarPopOut(setPoppedOut);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") backend.window.hide();
+      if (e.key !== "Escape") return;
+      // In settings mode Escape closes settings; otherwise it hides the grid.
+      if (settingsOpen) {
+        closeSettings();
+      } else {
+        backend.window.hide();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      offSettings();
+      offOpen();
+      offClose();
       offPopout();
       window.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [settingsOpen]);
 
   return (
-    <div style={{ zoom: scale }}>
-      <ErrorBoundary>
-        <TooltipProvider delayDuration={400}>
-          <PanelChrome>
+    <ErrorBoundary>
+      <TooltipProvider delayDuration={400}>
+        {/* The grid stays mounted under the settings view so its state
+            survives a settings round-trip; settings is unscaled (it owns the
+            window size in settings mode, not the grid's zoom). */}
+        <div style={{ zoom: scale }}>
+          <PanelChrome resizeEnabled={!settingsOpen}>
             {showOnboarding ? (
               <Onboarding onDone={dismissOnboarding} />
             ) : poppedOut ? (
@@ -74,11 +93,11 @@ function App() {
               <GridPanel onOpenSettings={openSettings} />
             )}
           </PanelChrome>
-          <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} tab={settingsTab} />
-          <InputRequestDialog />
-        </TooltipProvider>
-      </ErrorBoundary>
-    </div>
+        </div>
+        {settingsOpen && <SettingsView tab={settingsTab} />}
+        <InputRequestDialog />
+      </TooltipProvider>
+    </ErrorBoundary>
   );
 }
 

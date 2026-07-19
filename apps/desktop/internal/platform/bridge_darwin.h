@@ -70,6 +70,18 @@ void dz_set_pinned(bool pinned);
 // off, it returns to normal window level and status-item-anchored placement.
 void dz_set_popout_floating(bool on);
 
+// Settings window mode: flips the shared window between the frameless
+// popover grid chrome and a regular titled/closable/resizable app window
+// (centered, opaque, normal level) hosting the settings UI. While on,
+// hide-on-deactivate is suspended and grid show/hide/toggle calls just
+// bring the settings window forward. The popover chrome and frame are saved
+// on entry and restored on exit.
+void dz_set_settings_mode(bool on);
+
+// Shows/hides the Dock icon by switching between the Regular and Accessory
+// activation policies (the app is an Accessory menu-bar app at rest).
+void dz_set_dock_visible(bool visible);
+
 // Rewrites the image at src to dst with EXIF/GPS/TIFF/IPTC metadata removed.
 // Returns 0 on success.
 int dz_strip_image_metadata(const char *src, const char *dst);

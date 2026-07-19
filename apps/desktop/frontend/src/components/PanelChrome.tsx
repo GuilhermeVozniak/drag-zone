@@ -15,7 +15,15 @@ import { cn } from "@/lib/utils";
  * fit — see useAutoResize. It's capped at PANEL_MAX_CONTENT_HEIGHT so very
  * tall content scrolls internally instead of growing the window unbounded.
  */
-export function PanelChrome({ children }: { children: ReactNode }) {
+export function PanelChrome({
+  children,
+  resizeEnabled = true,
+}: {
+  children: ReactNode;
+  /** Set false in settings mode: the settings window owns its size, so the
+   * auto-resize must not fight it (the grid stays mounted underneath). */
+  resizeEnabled?: boolean;
+}) {
   const [beakX, setBeakX] = useState<number | null>(null);
   const [showKey, setShowKey] = useState(0);
   const [settings] = useSettings();
@@ -33,7 +41,7 @@ export function PanelChrome({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  useAutoResize(panelRef);
+  useAutoResize(panelRef, resizeEnabled);
 
   return (
     <div className="relative flex flex-col pt-2">

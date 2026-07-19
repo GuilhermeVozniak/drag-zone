@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-// Drives the Drop Bar, Settings dialog, and first-run Onboarding carousel
-// against the stateful mock backend (e2e/mock/backend.ts) — the same mock
-// grid.spec.ts and smoke.spec.ts use, seeded with one Drop Bar item ("Shared
-// link", see backend.ts's `dropBarItems`) and `onboardingSeen: true` so the
-// grid — not the carousel — is what every other spec sees.
+// Drives the Drop Bar, the full-window Settings view, and the first-run
+// Onboarding carousel against the stateful mock backend (e2e/mock/backend.ts)
+// — the same mock grid.spec.ts and smoke.spec.ts use, seeded with one Drop
+// Bar item ("Shared link", see backend.ts's `dropBarItems`) and
+// `onboardingSeen: true` so the grid — not the carousel — is what every
+// other spec sees.
 //
 // Two minimal, realistic mock additions were made for this spec (see
 // e2e/mock/backend.ts):
@@ -117,9 +118,9 @@ test.describe("Settings", () => {
     // is the actual effect of the setting the switch controls.
     await expect(page.locator("html")).toHaveClass(/dark/);
 
-    // Close (Escape) and reopen: SettingsDialog remounts nothing (it's kept
-    // alive, just hidden), but reopening re-reads the same persisted
-    // settings store either way — proving the change stuck via setSettings.
+    // Close (Escape routes to backend.settings.close, which the mock answers
+    // with settings:close) and reopen: reopening re-reads the same persisted
+    // settings store — proving the change stuck via setSettings.
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 

@@ -75,6 +75,17 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* The document itself never scrolls: the native window is sized to the
+     panel's content (useAutoResize), so any transient overflow (fractional
+     zoom rounding, entrance animations) would otherwise put a spurious
+     scrollbar on the transparent popover. Scrollable regions (the grid's
+     tile list, the settings view) scroll inside their own containers. */
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
   body {
     @apply bg-transparent text-foreground;
     user-select: none;

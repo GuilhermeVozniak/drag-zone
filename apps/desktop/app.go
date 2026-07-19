@@ -34,6 +34,7 @@ const (
 	EventGridChanged      = "grid:changed"
 	EventDropBarChanged   = "dropbar:changed"
 	EventOpenSettings     = "settings:open"
+	EventCloseSettings    = "settings:close"
 	EventWindowVisibility = "window:visibility"
 	EventSpecsChanged     = "specs:changed"
 	EventDropBarPopOut    = "dropbar:popout"
@@ -58,6 +59,7 @@ type App struct {
 	dragMu       sync.Mutex
 	draggingItem string // drop bar item ID of the in-flight drag-out
 	poppedOut    bool   // Drop Bar pop-out mode is active
+	settingsOpen bool   // the shared window is hosting the settings UI (settings mode)
 
 	iconMu    sync.Mutex
 	iconCache map[string]string
@@ -238,7 +240,7 @@ func (a *App) startup(ctx context.Context) {
 			a.emit(EventDropBarDragEnded)
 		},
 		OpenSettings: func() {
-			a.emit(EventOpenSettings)
+			a.OpenSettings("general")
 		},
 		GridVisibility: func(visible bool) {
 			a.emit(EventWindowVisibility, visible)
@@ -249,7 +251,11 @@ func (a *App) startup(ctx context.Context) {
 		PopOutHotkey: func() {
 			a.dragMu.Lock()
 			popped := a.poppedOut
+			settingsOpen := a.settingsOpen
 			a.dragMu.Unlock()
+			if settingsOpen {
+				return // the grid/Drop Bar is not available while settings is open
+			}
 			_ = a.SetDropBarPopOut(!popped)
 		},
 		DragActive: func(active bool) {

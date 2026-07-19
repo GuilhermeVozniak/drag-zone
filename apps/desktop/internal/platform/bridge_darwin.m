@@ -23,6 +23,14 @@ static NSString *gridWindowTitle = nil;
 static EventHotKeyRef hotKeyRefs[3] = {NULL, NULL, NULL};
 static bool shownForDrag = false;
 static bool pinnedMode = false;
+// Settings window mode: the shared window is currently a regular titled app
+// window hosting the settings UI instead of the frameless popover grid.
+// While on, hide-on-deactivate is suspended and grid show/hide/toggle turn
+// into simple activate-and-order-front. The popover chrome is saved on
+// entry and restored on exit.
+static bool settingsMode = false;
+static NSRect savedGridFrame;
+static NSUInteger savedGridStyleMask;
 static bool dragOverlayEnabled = true;
 static NSWindow *dragTab = nil;
 // Tracks whether a file drag is currently over the open grid window, so
@@ -74,6 +82,63 @@ void dz_set_popout_floating(bool on) {
         } else {
             win.level = NSNormalWindowLevel;
             [win setFrameAutosaveName:@""];
+        }
+    });
+}
+
+void dz_set_settings_mode(bool on) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSWindow *win = findGridWindow();
+        if (win == nil) {
+            return;
+        }
+        if (on) {
+            if (settingsMode) {
+                // Already showing settings (e.g. tray Settings… picked again):
+                // just bring the window back to the front.
+                [NSApp activateIgnoringOtherApps:YES];
+                [win makeKeyAndOrderFront:nil];
+                return;
+            }
+            settingsMode = true;
+            savedGridFrame = win.frame;
+            savedGridStyleMask = win.styleMask;
+            win.styleMask = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
+                            NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable;
+            win.level = NSNormalWindowLevel;
+            win.hasShadow = YES;
+            // The popover is transparent; settings is a normal opaque window.
+            // The color matches the settings view's dark surface so no
+            // see-through artifacts show during live resize.
+            win.opaque = YES;
+            win.backgroundColor = [NSColor colorWithSRGBRed:0.1 green:0.1 blue:0.1 alpha:1.0];
+            NSRect visible = (win.screen ?: NSScreen.mainScreen).visibleFrame;
+            CGFloat w = MIN(720, visible.size.width - 80);
+            CGFloat h = MIN(540, visible.size.height - 80);
+            [win setFrame:NSMakeRect(NSMidX(visible) - w / 2.0, NSMidY(visible) - h / 2.0, w, h)
+                  display:YES];
+            [NSApp activateIgnoringOtherApps:YES];
+            [win makeKeyAndOrderFront:nil];
+            return;
+        }
+        if (!settingsMode) {
+            return;
+        }
+        settingsMode = false;
+        win.styleMask = savedGridStyleMask;
+        win.level = NSFloatingWindowLevel; // popover AlwaysOnTop level
+        win.opaque = NO;
+        win.backgroundColor = NSColor.clearColor;
+        [win setFrame:savedGridFrame display:YES];
+    });
+}
+
+void dz_set_dock_visible(bool visible) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [NSApp setActivationPolicy:visible ? NSApplicationActivationPolicyRegular
+                                           : NSApplicationActivationPolicyAccessory];
+        if (visible) {
+            [NSApp activateIgnoringOtherApps:YES];
         }
     });
 }
@@ -170,6 +235,15 @@ static void showGridInternal(bool activate) {
         return;
     }
     hideDragTab();
+    if (settingsMode) {
+        // The window is hosting settings, not the grid: never reposition it
+        // under the status item, just bring it forward.
+        [win makeKeyAndOrderFront:nil];
+        if (activate) {
+            [NSApp activateIgnoringOtherApps:YES];
+        }
+        return;
+    }
     if (pinnedMode) {
         // The Drop Bar is popped out (floating): keep its autosaved / user-
         // dragged position instead of snapping it back under the status item.
@@ -227,6 +301,16 @@ void dz_hide_grid(void) {
 
 void dz_toggle_grid(void) {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (settingsMode) {
+            // Tray click / hotkey while settings is open: the grid is not
+            // available, so surface the settings window instead of hiding it.
+            NSWindow *win = findGridWindow();
+            if (win != nil) {
+                [NSApp activateIgnoringOtherApps:YES];
+                [win makeKeyAndOrderFront:nil];
+            }
+            return;
+        }
         NSWindow *win = findGridWindow();
         if (win != nil && win.isVisible) {
             [win orderOut:nil];
@@ -317,7 +401,8 @@ char *dz_clipboard_file_paths(void) {
 }
 
 - (void)openSettings:(id)sender {
-    dz_show_grid(true);
+    // No dz_show_grid here: the Go side flips the window into settings mode,
+    // which shows it as a centered regular window instead of the popover.
     goOpenSettings();
 }
 
@@ -718,13 +803,14 @@ void dz_init(const char *windowTitle) {
         [statusItem.button addSubview:overlay];
 
         // Hide the grid when the app deactivates (click elsewhere), except
-        // while it is being shown passively for an in-flight drag.
+        // while it is being shown passively for an in-flight drag, pinned in
+        // pop-out mode, or hosting the settings window.
         [NSNotificationCenter.defaultCenter
             addObserverForName:NSApplicationDidResignActiveNotification
                         object:nil
                          queue:NSOperationQueue.mainQueue
                     usingBlock:^(NSNotification *note) {
-                        if (!shownForDrag && !pinnedMode) {
+                        if (!shownForDrag && !pinnedMode && !settingsMode) {
                             dz_hide_grid();
                         }
                     }];

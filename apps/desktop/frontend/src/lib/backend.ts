@@ -31,6 +31,11 @@ export const backend = {
   settings: {
     get: App.GetSettings,
     set: (s: Settings) => App.SetSettings(s),
+    /** Enter settings mode: the shared window becomes a regular titled app
+     * window (Dock icon visible) hosting the settings UI on the given tab. */
+    open: (tab?: string) => App.OpenSettings(tab ?? "general"),
+    /** Leave settings mode and return the window to the popover grid. */
+    close: () => App.CloseSettings(),
   },
   actions: {
     specs: App.ActionSpecs,
@@ -112,7 +117,8 @@ export const events = {
   onGridChanged: (fn: (targets: Target[]) => void) => EventsOn("grid:changed", fn),
   onTasksChanged: (fn: (tasks: TaskState[]) => void) => EventsOn("tasks:changed", fn),
   onDropBarChanged: (fn: (items: DropBarItem[]) => void) => EventsOn("dropbar:changed", fn),
-  onOpenSettings: (fn: () => void) => EventsOn("settings:open", fn),
+  onOpenSettings: (fn: (tab: string) => void) => EventsOn("settings:open", fn),
+  onCloseSettings: (fn: () => void) => EventsOn("settings:close", fn),
   onSpecsChanged: (fn: (specs: ActionSpec[]) => void) => EventsOn("specs:changed", fn),
   onDropBarPopOut: (fn: (popped: boolean) => void) => EventsOn("dropbar:popout", fn),
   onInputRequest: (

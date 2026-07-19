@@ -5,7 +5,7 @@ import { vi } from "vitest";
 const afn = () => vi.fn(async () => undefined);
 
 export const backend = {
-  settings: { get: afn(), set: afn() },
+  settings: { get: afn(), set: afn(), open: afn(), close: afn() },
   actions: { specs: afn(), installBundle: afn(), openFolder: afn(), develop: afn() },
   grid: {
     list: afn(),
@@ -47,7 +47,7 @@ export const backend = {
   fileIcon: afn(),
   openURL: afn(),
   openPath: afn(),
-  window: { hide: afn(), quit: afn(), about: afn() },
+  window: { hide: afn(), quit: afn(), about: afn(), resize: afn() },
 };
 
 // --- event registry: each subscriber records its latest callback + unsub ---
@@ -68,6 +68,7 @@ export const events = {
   onTasksChanged: sub("tasks:changed"),
   onDropBarChanged: sub("dropbar:changed"),
   onOpenSettings: sub("settings:open"),
+  onCloseSettings: sub("settings:close"),
   onSpecsChanged: sub("specs:changed"),
   onDropBarPopOut: sub("dropbar:popout"),
   onInputRequest: sub("input:request"),

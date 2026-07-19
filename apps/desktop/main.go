@@ -31,15 +31,14 @@ func main() {
 	}
 
 	err = wails.Run(&options.App{
-		Title:             "DragZone",
-		Width:             windowWidth,
-		Height:            windowHeight,
-		Frameless:         true,
-		DisableResize:     true,
-		AlwaysOnTop:       true,
-		HideWindowOnClose: true,
-		StartHidden:       true,
-		BackgroundColour:  &options.RGBA{R: 0, G: 0, B: 0, A: 0},
+		Title:            "DragZone",
+		Width:            windowWidth,
+		Height:           windowHeight,
+		Frameless:        true,
+		DisableResize:    true,
+		AlwaysOnTop:      true,
+		StartHidden:      true,
+		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
@@ -50,8 +49,11 @@ func main() {
 		DragAndDrop: &options.DragAndDrop{
 			EnableFileDrop: true,
 		},
-		OnStartup:  app.startup,
-		OnShutdown: app.shutdown,
+		OnStartup: app.startup,
+		// The close button only exists in settings mode (the popover is
+		// frameless); beforeClose turns it into "close settings" there.
+		OnBeforeClose: app.beforeClose,
+		OnShutdown:    app.shutdown,
 		Bind: []interface{}{
 			app,
 		},

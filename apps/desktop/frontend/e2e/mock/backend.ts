@@ -669,6 +669,20 @@ export async function HideWindow(): Promise<void> {}
 
 export async function ShowWindow(): Promise<void> {}
 
+// Mirrors the real app (app_settings.go): entering settings mode flips the
+// window natively and emits settings:open with the requested tab; leaving
+// emits settings:close. The browser mock only needs the event round-trip —
+// there is no native window to re-chrome.
+export async function OpenSettings(tab: string): Promise<void> {
+  EventsEmit("settings:open", tab);
+}
+
+export async function CloseSettings(): Promise<void> {
+  EventsEmit("settings:close");
+}
+
+export async function ResizeWindow(_height: number): Promise<void> {}
+
 export async function Quit(): Promise<void> {}
 
 export async function About(): Promise<void> {}
