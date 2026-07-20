@@ -41,7 +41,7 @@ func TestHandleIPCListAndAdd(t *testing.T) {
 	}
 
 	// add two files individually.
-	if _, err := app.handleIPC(ipc.Request{Cmd: "add", Args: []string{"/x/a.txt", "/x/b.txt"}}); err != nil {
+	if _, err := app.handleIPC(ipc.Request{Cmd: "add", Args: tempFiles(t, "a.txt", "b.txt")}); err != nil {
 		t.Fatal(err)
 	}
 	if len(app.dropBar.List()) != 2 {
@@ -49,7 +49,7 @@ func TestHandleIPCListAndAdd(t *testing.T) {
 	}
 	// add --stack keeps them as one item.
 	app.DropBarClear()
-	if _, err := app.handleIPC(ipc.Request{Cmd: "add", Args: []string{"/x/a", "/x/b"}, Flags: map[string]bool{"stack": true}}); err != nil {
+	if _, err := app.handleIPC(ipc.Request{Cmd: "add", Args: tempFiles(t, "sa", "sb"), Flags: map[string]bool{"stack": true}}); err != nil {
 		t.Fatal(err)
 	}
 	if len(app.dropBar.List()) != 1 {
@@ -59,7 +59,7 @@ func TestHandleIPCListAndAdd(t *testing.T) {
 
 func TestHandleIPCItemCommandsByIndex(t *testing.T) {
 	app := newTestApp(t)
-	app.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: []string{"/x/a.txt"}})
+	app.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: tempFiles(t, "a.txt")})
 	// rename item 1
 	if _, err := app.handleIPC(ipc.Request{Cmd: "rename", Args: []string{"1", "custom"}}); err != nil {
 		t.Fatal(err)
@@ -88,10 +88,10 @@ func TestHandleIPCItemCommandsByIndex(t *testing.T) {
 // before), and "clear".
 func TestHandleIPCListItemsClearRemove(t *testing.T) {
 	app := newTestApp(t)
-	if _, err := app.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: []string{"/x/a.txt"}}); err != nil {
+	if _, err := app.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: tempFiles(t, "a.txt")}); err != nil {
 		t.Fatalf("seed item 1: %v", err)
 	}
-	if _, err := app.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: []string{"/x/b.txt"}}); err != nil {
+	if _, err := app.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: tempFiles(t, "b.txt")}); err != nil {
 		t.Fatalf("seed item 2: %v", err)
 	}
 
