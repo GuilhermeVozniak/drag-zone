@@ -63,6 +63,10 @@ static NSWindow *findGridWindow(void) {
         gridWindow.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
                                         NSWindowCollectionBehaviorFullScreenAuxiliary;
         gridWindow.hidesOnDeactivate = NO;
+        // The popover is transparent and the panel draws its own rounded
+        // shadow in CSS (shadow-2xl); the native window shadow follows the
+        // window rect, showing as a squared halo behind the rounded panel.
+        gridWindow.hasShadow = NO;
     }
     return gridWindow;
 }
@@ -129,6 +133,7 @@ void dz_set_settings_mode(bool on) {
         win.level = NSFloatingWindowLevel; // popover AlwaysOnTop level
         win.opaque = NO;
         win.backgroundColor = NSColor.clearColor;
+        win.hasShadow = NO; // popover: the panel's rounded CSS shadow instead
         [win setFrame:savedGridFrame display:YES];
     });
 }
