@@ -5,6 +5,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import <ServiceManagement/ServiceManagement.h>
 #import <CoreGraphics/CoreGraphics.h>
+#import <WebKit/WebKit.h>
 #include "bridge_darwin.h"
 
 // Callbacks implemented in Go (bridge_darwin.go).
@@ -73,6 +74,19 @@ static NSWindow *findGridWindow(void) {
         // shadow in CSS (shadow-2xl); the native window shadow follows the
         // window rect, showing as a squared halo behind the rounded panel.
         gridWindow.hasShadow = NO;
+        // Wails sets WKWebView.drawsBackground=NO (WebviewIsTransparent),
+        // but recent macOS still paints the webview's under-page background
+        // across the whole window — the squared dark surface behind the
+        // rounded panel. Clear it as well.
+        for (NSView *v in gridWindow.contentView.subviews) {
+            if ([v isKindOfClass:WKWebView.class]) {
+                WKWebView *wv = (WKWebView *)v;
+                [wv setValue:@NO forKey:@"drawsBackground"];
+                if (@available(macOS 12.0, *)) {
+                    wv.underPageBackgroundColor = NSColor.clearColor;
+                }
+            }
+        }
     }
     return gridWindow;
 }

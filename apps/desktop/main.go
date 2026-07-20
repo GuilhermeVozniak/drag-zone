@@ -44,7 +44,9 @@ func main() {
 		},
 		Mac: &mac.Options{
 			WebviewIsTransparent: true,
-			WindowIsTranslucent:  true,
+			// NOTE: no WindowIsTranslucent — it makes Wails insert an
+			// NSVisualEffectView behind the webview, a frosted dark square
+			// that shows behind the panel's rounded corners.
 		},
 		DragAndDrop: &options.DragAndDrop{
 			EnableFileDrop: true,
