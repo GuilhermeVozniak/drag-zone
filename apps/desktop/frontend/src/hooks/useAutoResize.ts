@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { backend } from "@/lib/backend";
 
 /**
@@ -24,19 +24,28 @@ export const PANEL_MAX_CONTENT_HEIGHT = AUTO_RESIZE_MAX_HEIGHT - CHROME_PX;
  * backend when the rounded target height actually changes. Disabled in
  * settings mode, where the settings window owns its size (the Go
  * ResizeWindow binding also ignores calls then).
+ *
+ * Takes the element itself (via a callback ref / state) rather than a
+ * RefObject: PanelChrome remounts the panel div on every show to replay the
+ * entrance animation, and the observer must follow the new element — a
+ * stable RefObject would keep observing the detached node, whose collapse
+ * to 0px would shrink the window to the minimum height.
  */
-export function useAutoResize(ref: RefObject<HTMLElement | null>, enabled = true) {
+export function useAutoResize(el: HTMLElement | null, enabled = true) {
   const lastHeight = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!enabled) return;
-    const el = ref.current;
-    if (!el) return;
+    if (!enabled || !el) return;
 
     const measure = () => {
+      // Skip stale notifications from a node that was just unmounted (its
+      // rect collapses to 0) — measuring it would clamp the window to the
+      // minimum height right as the panel reappears.
+      if (!el.isConnected) return;
       // getBoundingClientRect() already reflects the CSS `zoom` scale used
       // for the grid-size setting; don't multiply by scale again.
       const contentHeight = el.getBoundingClientRect().height;
+      if (contentHeight === 0) return;
       const target = Math.min(
         AUTO_RESIZE_MAX_HEIGHT,
         Math.max(AUTO_RESIZE_MIN_HEIGHT, Math.ceil(contentHeight + CHROME_PX)),
@@ -49,5 +58,5 @@ export function useAutoResize(ref: RefObject<HTMLElement | null>, enabled = true
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [ref, enabled]);
+  }, [el, enabled]);
 }

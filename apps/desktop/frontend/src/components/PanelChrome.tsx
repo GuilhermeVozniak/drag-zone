@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { PANEL_MAX_CONTENT_HEIGHT, useAutoResize } from "@/hooks/useAutoResize";
 import { useSettings } from "@/hooks/useBackend";
 import { events } from "@/lib/backend";
@@ -28,7 +28,10 @@ export function PanelChrome({
   const [showKey, setShowKey] = useState(0);
   const [settings] = useSettings();
   const animate = settings?.animateGrid ?? true;
-  const panelRef = useRef<HTMLDivElement | null>(null);
+  // State (callback ref), not useRef: the panel div remounts on every show
+  // (key={showKey}) to replay the entrance animation, and useAutoResize must
+  // re-observe the new element.
+  const [panelEl, setPanelEl] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const offBeak = events.onWindowBeak(setBeakX);
@@ -41,7 +44,7 @@ export function PanelChrome({
     };
   }, []);
 
-  useAutoResize(panelRef, resizeEnabled);
+  useAutoResize(panelEl, resizeEnabled);
 
   return (
     <div className="relative flex flex-col pt-2">
@@ -52,7 +55,7 @@ export function PanelChrome({
         />
       </div>
       <div
-        ref={panelRef}
+        ref={setPanelEl}
         key={animate ? showKey : 0}
         className={cn(
           "flex w-full flex-col overflow-hidden rounded-lg border border-white/10 shadow-2xl",
