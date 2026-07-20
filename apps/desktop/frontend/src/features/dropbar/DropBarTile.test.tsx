@@ -37,16 +37,31 @@ describe("DropBarTile", () => {
     expect(screen.getByText("2")).toBeInTheDocument();
   });
 
-  it("double-click on a files item triggers Quick Look with its paths", async () => {
+  it("single-click on a files item triggers Quick Look with its paths", async () => {
     const user = userEvent.setup();
     const item = filesItem({ paths: ["/unique/dropbartile/c.txt"], label: "c.txt" });
     render(<DropBarTile item={item} onRemove={vi.fn()} />);
     const tile = screen.getByText("c.txt").parentElement as HTMLElement;
-    await user.dblClick(tile);
+    await user.click(tile);
     expect(backend.quickLook).toHaveBeenCalledWith(["/unique/dropbartile/c.txt"]);
   });
 
-  it("does not Quick Look a non-files item on double-click", async () => {
+  it("single-click on a stack Quick Looks every path in it", async () => {
+    const user = userEvent.setup();
+    const item = filesItem({
+      paths: ["/unique/dropbartile/s1.png", "/unique/dropbartile/s2.png"],
+      label: "2 Items",
+    });
+    render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    const tile = screen.getByText("2 Items").parentElement as HTMLElement;
+    await user.click(tile);
+    expect(backend.quickLook).toHaveBeenCalledWith([
+      "/unique/dropbartile/s1.png",
+      "/unique/dropbartile/s2.png",
+    ]);
+  });
+
+  it("does not Quick Look a non-files item on click", async () => {
     const user = userEvent.setup();
     const item = {
       id: "i2",
@@ -57,7 +72,19 @@ describe("DropBarTile", () => {
     } as DropBarItem;
     render(<DropBarTile item={item} onRemove={vi.fn()} />);
     const tile = screen.getByText("hello").parentElement as HTMLElement;
-    await user.dblClick(tile);
+    await user.click(tile);
+    expect(backend.quickLook).not.toHaveBeenCalled();
+  });
+
+  it("does not Quick Look when a press turned into a drag-out", () => {
+    const item = filesItem({ paths: ["/unique/dropbartile/drag.txt"], label: "drag.txt" });
+    render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    const tile = screen.getByText("drag.txt").parentElement as HTMLElement;
+    fireEvent.mouseDown(tile, { button: 0, clientX: 0, clientY: 0 });
+    fireEvent.mouseMove(tile, { clientX: 20, clientY: 0 });
+    fireEvent.mouseUp(tile);
+    fireEvent.click(tile);
+    expect(backend.dragOut).toHaveBeenCalledWith("i1");
     expect(backend.quickLook).not.toHaveBeenCalled();
   });
 

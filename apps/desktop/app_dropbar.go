@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os/exec"
 	"strings"
 
@@ -16,6 +17,16 @@ func (a *App) DropBarItems() []dropbar.Item {
 }
 
 func (a *App) DropBarAdd(p model.Payload) (dropbar.Item, error) {
+	// Stash app-owned copies, never references: dragging the item back out
+	// moves DragZone's copy and leaves the user's original untouched (see
+	// dropbar.StagePaths).
+	if p.Kind == model.ItemFiles && len(p.Paths) > 0 {
+		staged, err := dropbar.StagePaths(p.Paths)
+		if err != nil {
+			return dropbar.Item{}, fmt.Errorf("staging dropped files: %w", err)
+		}
+		p.Paths = staged
+	}
 	it, err := a.dropBar.Add(p)
 	if err != nil {
 		return dropbar.Item{}, err
@@ -25,16 +36,24 @@ func (a *App) DropBarAdd(p model.Payload) (dropbar.Item, error) {
 }
 
 func (a *App) DropBarRemove(id string) error {
+	item, ok := a.dropBar.Get(id)
 	if err := a.dropBar.Remove(id); err != nil {
 		return err
+	}
+	if ok {
+		dropbar.Unstage(item.Paths)
 	}
 	a.emit(EventDropBarChanged, a.dropBar.List())
 	return nil
 }
 
 func (a *App) DropBarClear() error {
+	items := a.dropBar.List()
 	if err := a.dropBar.Clear(); err != nil {
 		return err
+	}
+	for _, it := range items {
+		dropbar.Unstage(it.Paths)
 	}
 	a.emit(EventDropBarChanged, a.dropBar.List())
 	return nil

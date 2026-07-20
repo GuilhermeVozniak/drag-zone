@@ -23,8 +23,8 @@ function itemIcon(item: DropBarItem) {
  * Hovering the tile spreads the fan and lifts + highlights the front image, so
  * it's clear which stack you're about to grab. paths[0] is drawn on top.
  * Each thumbnail is clickable: it opens that one file in the default app
- * (Quick Look stays on the tile's own double-click), so a click must not
- * bubble up into the tile's drag-out or Quick Look handlers.
+ * (Quick Look of the whole stack stays on the tile's own click), so a click
+ * must not bubble up into the tile's drag-out or Quick Look handlers.
  */
 function StackFan({ paths }: { paths: string[] }) {
   const first = useFileIcon(paths[0]);
@@ -81,13 +81,17 @@ interface DropBarTileProps {
 /**
  * One stashed item (or stack) in the Drop Bar. File items start a native
  * drag session on drag-out so they can land in Finder and other apps;
- * text/URL items use HTML5 drag for in-window drops onto grid tiles.
+ * text/URL items use HTML5 drag for in-window drops onto grid tiles. A
+ * single click on a file item (or stack) Quick Looks its contents.
  */
 export function DropBarTile({ item, onRemove }: DropBarTileProps) {
   const Icon = itemIcon(item);
   const count = item.paths?.length ?? 0;
   const nativeIcon = useFileIcon(item.paths?.[0]);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
+  // Set when a press turns into a drag-out, so the click that lands on
+  // mouse-up doesn't also fire a Quick Look.
+  const didDrag = useRef(false);
   const isFiles = item.kind === "files";
   const [renaming, setRenaming] = useState<string | null>(null);
   // Highlighted while another Drop Bar item's drag-out hovers this tile,
@@ -105,6 +109,7 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
             e.dataTransfer.effectAllowed = "copyMove";
           }}
           onMouseDown={(e) => {
+            didDrag.current = false;
             if (isFiles && e.button === 0) {
               dragStart.current = { x: e.clientX, y: e.clientY };
             }
@@ -114,6 +119,7 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
             if (!start) return;
             if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) {
               dragStart.current = null;
+              didDrag.current = true;
               // Mark this item as the in-flight drag-out source so a drop
               // that lands back on a sibling tile (see useNativeFileDrop)
               // combines the two instead of stashing a duplicate item.
@@ -124,8 +130,13 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
           onMouseUp={() => {
             dragStart.current = null;
           }}
-          onDoubleClick={() => {
-            if (isFiles) backend.quickLook(item.paths ?? []);
+          onClick={() => {
+            if (!isFiles) return;
+            if (didDrag.current) {
+              didDrag.current = false;
+              return;
+            }
+            backend.quickLook(item.paths ?? []);
           }}
           // Best-effort visual hint for the combine drop target: WebKit
           // forwards a native drag hovering the window as ordinary drag
@@ -177,7 +188,11 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
             {item.label}
           </span>
           <button
-            onClick={() => onRemove(item.id)}
+            onClick={(e) => {
+              // Don't let the remove click bubble into the tile's Quick Look.
+              e.stopPropagation();
+              onRemove(item.id);
+            }}
             className="absolute -left-1 -top-1 hidden rounded-full bg-neutral-700 p-0.5 group-hover:block"
           >
             <X className="size-2.5 text-white" />
