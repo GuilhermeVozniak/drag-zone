@@ -63,6 +63,12 @@ static NSWindow *findGridWindow(void) {
         gridWindow.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
                                         NSWindowCollectionBehaviorFullScreenAuxiliary;
         gridWindow.hidesOnDeactivate = NO;
+        // Force the popover fully transparent: without this the window can
+        // render as an opaque dark rect behind the panel, whose rounded
+        // corners are then invisible (the panel looks square). Settings
+        // mode re-enables opacity and this is restored when leaving it.
+        gridWindow.opaque = NO;
+        gridWindow.backgroundColor = NSColor.clearColor;
         // The popover is transparent and the panel draws its own rounded
         // shadow in CSS (shadow-2xl); the native window shadow follows the
         // window rect, showing as a squared halo behind the rounded panel.
