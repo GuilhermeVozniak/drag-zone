@@ -2,7 +2,7 @@ package platform
 
 /*
 #cgo CFLAGS: -x objective-c -fobjc-arc
-#cgo LDFLAGS: -framework Cocoa -framework Carbon -framework ServiceManagement -framework ImageIO -framework QuickLookThumbnailing -framework CoreGraphics
+#cgo LDFLAGS: -framework Cocoa -framework Carbon -framework ServiceManagement -framework ImageIO -framework QuickLookThumbnailing -framework CoreGraphics -framework WebKit
 #include <stdlib.h>
 #include "bridge_darwin.h"
 */
