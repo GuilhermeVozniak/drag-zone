@@ -8,6 +8,7 @@ import {
   type Target,
   type TaskState,
 } from "@/lib/backend";
+import { reportError } from "@/lib/report";
 
 // arr coerces a possibly-null binding result into an array. Go marshals an
 // empty slice as null unless the backend guards against it; this keeps the
@@ -89,12 +90,27 @@ export function useSettings(): [Settings | null, (s: Settings) => Promise<void>]
   useEffect(() => {
     if (settingsState === null && !settingsLoading) {
       settingsLoading = true;
-      backend.settings.get().then(publishSettings);
+      backend.settings
+        .get()
+        .then(publishSettings)
+        .catch((err) => {
+          // Allow a retry on the next mount instead of wedging loading
+          // forever (which left the settings window permanently blank).
+          settingsLoading = false;
+          reportError("Couldn't load settings", err);
+        });
     }
   }, []);
   const update = async (s: Settings) => {
+    const prev = settingsState;
     publishSettings(s);
-    await backend.settings.set(s);
+    try {
+      await backend.settings.set(s);
+    } catch (err) {
+      // Roll back the optimistic publish so the UI matches what persisted.
+      if (prev !== null) publishSettings(prev);
+      reportError("Couldn't save settings", err);
+    }
   };
   return [settings, update];
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PanelChrome } from "@/components/PanelChrome";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PopoutBar } from "@/features/dropbar/PopoutBar";
 import { GridPanel } from "@/features/grid/GridPanel";
@@ -10,6 +11,7 @@ import { InputRequestDialog } from "@/features/tasks/InputRequestDialog";
 import { useSettings } from "@/hooks/useBackend";
 import { backend, events, uiScale } from "@/lib/backend";
 import { setUIScale } from "@/lib/dnd";
+import { modalOpen } from "@/lib/uistate";
 
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -61,6 +63,9 @@ function App() {
     const offPopout = events.onDropBarPopOut(setPoppedOut);
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      // A modal dialog consumes Escape itself (Radix closes it); don't let
+      // the same keystroke also hide the window out from under the user.
+      if (modalOpen()) return;
       // In settings mode Escape closes settings; otherwise it hides the grid.
       if (settingsOpen) {
         closeSettings();
@@ -96,6 +101,7 @@ function App() {
         </div>
         {settingsOpen && <SettingsView tab={settingsTab} />}
         <InputRequestDialog />
+        <Toaster position="top-center" />
       </TooltipProvider>
     </ErrorBoundary>
   );

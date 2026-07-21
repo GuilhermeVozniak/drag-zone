@@ -6,6 +6,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"dragzone/internal/model"
 )
@@ -13,6 +14,9 @@ import (
 // Services are host capabilities provided to running actions.
 type Services interface {
 	CopyToClipboard(text string) error
+	// CopyFilesToClipboard places file URLs on the clipboard so the files
+	// themselves (not their paths) can be pasted into other apps.
+	CopyFilesToClipboard(paths []string) error
 	ReadClipboard() (string, error)
 	Notify(title, body string)
 	// PlaySound plays a named system sound (e.g. "Glass", "Basso").
@@ -74,8 +78,11 @@ type Clicker interface {
 	Clicked(ctx context.Context, inv Invocation) (Result, error)
 }
 
-// Registry holds the available action types in registration order.
+// Registry holds the available action types in registration order. It is
+// safe for concurrent use: bundle installs register from RPC goroutines
+// while drops and clicks read.
 type Registry struct {
+	mu    sync.RWMutex
 	order []string
 	byID  map[string]Action
 }
@@ -96,6 +103,8 @@ func (r *Registry) Register(a Action) {
 // user-installed actions where a collision is not a programmer error.
 func (r *Registry) TryRegister(a Action) error {
 	id := a.Spec().ID
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if _, dup := r.byID[id]; dup {
 		return fmt.Errorf("actions: duplicate action id %q", id)
 	}
@@ -106,6 +115,8 @@ func (r *Registry) TryRegister(a Action) error {
 
 // Get returns the action with the given ID.
 func (r *Registry) Get(id string) (Action, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	a, ok := r.byID[id]
 	if !ok {
 		return nil, fmt.Errorf("unknown action %q", id)
@@ -116,6 +127,8 @@ func (r *Registry) Get(id string) (Action, error) {
 // Specs lists all registered action specs in registration order. It never
 // returns nil so the value marshals to a JSON array for the frontend.
 func (r *Registry) Specs() []model.ActionSpec {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	specs := make([]model.ActionSpec, 0, len(r.order))
 	for _, id := range r.order {
 		specs = append(specs, r.byID[id].Spec())

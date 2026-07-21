@@ -66,6 +66,11 @@ func CreateTemplate(dir, name, language string) (string, error) {
 	if strings.TrimSpace(name) == "" {
 		return "", fmt.Errorf("action name is required")
 	}
+	// The name becomes a directory and lands in a comment header line, so it
+	// must not carry path separators or newlines.
+	if strings.ContainsAny(name, "/\\\n\r") {
+		return "", fmt.Errorf("action name %q is not a valid file name", name)
+	}
 	bundle := filepath.Join(dir, name+".dzbundle")
 	if _, err := os.Stat(bundle); err == nil {
 		return "", fmt.Errorf("an action named %q already exists", name)
