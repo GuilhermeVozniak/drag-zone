@@ -93,14 +93,21 @@ end
 ```
 
 Under the hood the shims speak a line protocol on stdout (see
-`internal/bundles/shims.go`); plain `puts`/`print` output is ignored, so
-debug freely.
+`internal/bundles/shims.go`); plain `puts`/`print` output and stderr land in
+the debug console (gear menu → Debug Console), which auto-opens when a
+script run fails.
+
+Honored headers beyond identity/config: `RunsSandboxed: Yes` runs the script
+under `sandbox-exec` with no network and writes confined to the temp dir;
+`MinDropzoneVersion` gates loading against the running app version;
+`UseSelectedItemNameAndIcon` makes a bare click operate on the current
+Finder selection.
 
 ## Built-in actions
 
 Folder (copy/move, Option inverts), Open Application, AirDrop, Zip Files,
 Copy to Clipboard, Move to Trash, Install Application (.dmg/.zip), Save Text,
-Print, Shorten URL (TinyURL), Imgur, Amazon S3, FTP/SFTP, Google Drive
+Print, Imgur, Amazon S3, FTP/SFTP, Google Drive
 (bring-your-own OAuth Desktop-app credential), Convert Images, Remove Image
 Metadata. Sources: `internal/actions/builtin/` — one file per action; they
 are also the best reference for writing new built-ins in Go.

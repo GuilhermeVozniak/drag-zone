@@ -2,8 +2,10 @@
 
 ## Parity status (updated 2026-07-18)
 
-**Built-in actions: 29 — Dropzone 4's COMPLETE built-in set.** Added this
-session: Screenshot, Copy Path, Create Apple Note, ImgBB, Short.io, Tinify,
+**Built-in actions: 31 — Dropzone 4's built-in set minus the URL shorteners
+(TinyURL / Short.io), deliberately removed: a short link must resolve for
+third parties 24/7, which no locally-runnable backend can guarantee.** Added
+this session: Screenshot, Copy Path, Create Apple Note, ImgBB, Short.io, Tinify,
 Zip & Email, Create GIF (pure-Go animated), YouTube Downloader (`yt-dlp`),
 Image Search, Run AppleScript, Screenshot & Upload (SFTP), and Flickr Upload
 (manual OAuth 1.0a HMAC-SHA1 signing, signature verified against the
@@ -92,7 +94,7 @@ Research compiled 2026-07-05 from aptonic.com, the `aptonic/dropzone4-actions` G
 
 ## 2. Built-in actions
 
-Free: **Move Files** (rsync-based; conflict dialog Replace/Stop/Keep Both), **Copy Files** (same), **Open Application** (drop = open-with, click = launch), **AirDrop**, **Shorten URL** (TinyURL; global hotkey Ctrl+Option+Cmd+S shortens selected URL → clipboard), **Imgur Upload** (URL → clipboard), **Save Text** (drop text → asks name → saves file).
+Free: **Move Files** (rsync-based; conflict dialog Replace/Stop/Keep Both), **Copy Files** (same), **Open Application** (drop = open-with, click = launch), **AirDrop**, **Shorten URL** (TinyURL; global hotkey Ctrl+Option+Cmd+S shortens selected URL → clipboard — **omitted from the clone**, see header), **Imgur Upload** (URL → clipboard), **Save Text** (drop text → asks name → saves file).
 
 Pro: **Amazon S3** (Option-drop = zip first; URL → clipboard), **FTP Upload** (SFTP too; many instances; Option-drop = zip first), **Google Drive** (OAuth, share link), **Install Application** (mount .dmg → copy .app to /Applications → launch → eject → trash dmg), **Run AppleScript**, per-action keyboard shortcuts.
 
@@ -149,7 +151,7 @@ Gear icon in grid. Tabs: **General**, **Add-on Actions**, **Command Line** (dire
 
 ## 7. Misc & Free-vs-Pro
 
-- Clipboard is the output bus for upload/shorten actions.
+- Clipboard is the output bus for upload actions.
 - Option-key summary: invert folder move/copy; zip-before-upload (FTP/S3); delete grid items; Develop Action…; pop out floating Drop Bar.
 - Shortcuts app + macOS Services integration (Pro).
 - CLI (`dz`, 4.80.49+): `list`, `run NAME dragged|clicked [FILES…]`, `list-items [--json]`, `add [--stack] FILES…`, `rename INDEX NAME|--reset`, `remove INDEX`, `lock/unlock INDEX`, `clear`, `open`, `close`, `open-dropbar`, `close-dropbar`.

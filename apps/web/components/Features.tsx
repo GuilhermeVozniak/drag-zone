@@ -6,7 +6,6 @@ import {
   Image as ImageIcon,
   Keyboard,
   Layers,
-  Link2,
   type LucideIcon,
   Puzzle,
   ShieldCheck,
@@ -47,12 +46,6 @@ const ACTIONS: { icon: LucideIcon; tint: string; title: string; body: string }[]
     tint: "from-blue-400 to-indigo-600",
     title: "Copy to Clipboard",
     body: "Put file contents or paths straight on the clipboard.",
-  },
-  {
-    icon: Link2,
-    tint: "from-teal-300 to-cyan-500",
-    title: "Shorten Links",
-    body: "Drop a URL to get a short link back.",
   },
   {
     icon: ImageIcon,

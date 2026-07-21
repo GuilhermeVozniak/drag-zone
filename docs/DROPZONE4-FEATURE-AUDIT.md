@@ -13,7 +13,7 @@ comparison screenshots) against DragZone as shipped in **v0.7.4**. Legend:
 | Move Files / Copy Files | ✓ | one `Folder` action, copy/move option, Option inverts, conflict dialog Keep-Both/Replace/Stop |
 | Open Application | ✓ | click launches, drop opens-with |
 | AirDrop | ✓ | native NSSharingService |
-| Shorten URL (TinyURL) | ✓ | drop + click-clipboard |
+| Shorten URL (TinyURL) | — | removed: short links need always-on hosting; not shippable locally |
 | Imgur Upload | ✓ | httptest-covered |
 | Save Text | ✓ | prompts for name |
 | Amazon S3 | ✓ | + Option-zip-first |
@@ -26,7 +26,7 @@ comparison screenshots) against DragZone as shipped in **v0.7.4**. Legend:
 | Tinify (TinyPNG) | ✓ | Basic-auth shrink + download |
 | Create Apple Note | ✓ | osascript, escaping-safe |
 | ImgBB | ✓ | base64 upload |
-| Short.io | ✓ | API-key + domain |
+| Short.io | — | removed (same reason as TinyURL) |
 | YouTube Downloader | ✓ | yt-dlp seam; `format=audio` covers "YouTube Download Audio" |
 | Screenshot | ✓ | `screencapture` → ~/Screenshots → Drop Bar (needs Screen Recording grant) |
 | Screenshot & Upload (SFTP) | ✓ | capture + reuse FTP upload → clipboard URL |
