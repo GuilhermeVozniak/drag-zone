@@ -17,6 +17,7 @@ func withScreenRecordingGranted(t *testing.T) {
 type recServices struct {
 	Clipboard    string
 	ClipboardErr error
+	ClipFiles    []string
 	Trashed      [][]string
 	TrashErr     error
 	AirDropped   [][]string
@@ -35,11 +36,18 @@ func (r *recServices) CopyToClipboard(s string) error {
 	return nil
 }
 func (r *recServices) ReadClipboard() (string, error) { return r.ReadClip, nil }
-func (r *recServices) Notify(title, body string)      { r.Notes = append(r.Notes, title+"|"+body) }
-func (r *recServices) PlaySound(name string)          { r.Sounds = append(r.Sounds, name) }
-func (r *recServices) OpenURL(u string) error         { r.Opened = append(r.Opened, u); return nil }
-func (r *recServices) OpenPath(p string) error        { r.Opened = append(r.Opened, p); return nil }
-func (r *recServices) Reveal(p string) error          { r.Opened = append(r.Opened, p); return nil }
+func (r *recServices) CopyFilesToClipboard(paths []string) error {
+	if r.ClipboardErr != nil {
+		return r.ClipboardErr
+	}
+	r.ClipFiles = append(r.ClipFiles, paths...)
+	return nil
+}
+func (r *recServices) Notify(title, body string) { r.Notes = append(r.Notes, title+"|"+body) }
+func (r *recServices) PlaySound(name string)     { r.Sounds = append(r.Sounds, name) }
+func (r *recServices) OpenURL(u string) error    { r.Opened = append(r.Opened, u); return nil }
+func (r *recServices) OpenPath(p string) error   { r.Opened = append(r.Opened, p); return nil }
+func (r *recServices) Reveal(p string) error     { r.Opened = append(r.Opened, p); return nil }
 func (r *recServices) Trash(p []string) error {
 	if r.TrashErr != nil {
 		return r.TrashErr

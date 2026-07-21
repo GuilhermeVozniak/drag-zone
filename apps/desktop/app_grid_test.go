@@ -10,15 +10,16 @@ import (
 // side effects (clipboard, notifications, file ops).
 type noopServices struct{}
 
-func (noopServices) CopyToClipboard(string) error   { return nil }
-func (noopServices) ReadClipboard() (string, error) { return "", nil }
-func (noopServices) Notify(string, string)          {}
-func (noopServices) PlaySound(string)               {}
-func (noopServices) OpenURL(string) error           { return nil }
-func (noopServices) OpenPath(string) error          { return nil }
-func (noopServices) Reveal(string) error            { return nil }
-func (noopServices) Trash([]string) error           { return nil }
-func (noopServices) AirDrop([]string) error         { return nil }
+func (noopServices) CopyToClipboard(string) error              { return nil }
+func (noopServices) ReadClipboard() (string, error)            { return "", nil }
+func (noopServices) CopyFilesToClipboard(paths []string) error { return nil }
+func (noopServices) Notify(string, string)                     {}
+func (noopServices) PlaySound(string)                          {}
+func (noopServices) OpenURL(string) error                      { return nil }
+func (noopServices) OpenPath(string) error                     { return nil }
+func (noopServices) Reveal(string) error                       { return nil }
+func (noopServices) Trash([]string) error                      { return nil }
+func (noopServices) AirDrop([]string) error                    { return nil }
 
 func newTestApp(t *testing.T) *App {
 	t.Helper()

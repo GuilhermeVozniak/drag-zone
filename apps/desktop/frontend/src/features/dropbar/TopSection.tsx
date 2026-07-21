@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/context-menu";
 import type { DropBarItem } from "@/lib/backend";
 import { backend } from "@/lib/backend";
+import { reorderIndex } from "@/lib/dnd";
+import { reportError } from "@/lib/report";
 import { DropBarTile } from "./DropBarTile";
 
 interface TopSectionProps {
@@ -50,6 +52,12 @@ function DashedTile({
  * operations.
  */
 export function TopSection({ items, showAddToGrid = true, onAddClick }: TopSectionProps) {
+  const handleReorder = (sourceId: string, targetId: string, after: boolean) => {
+    const idx = reorderIndex(items, sourceId, targetId, after);
+    if (idx != null) {
+      backend.dropBar.move(sourceId, idx).catch((err) => reportError("Couldn't reorder", err));
+    }
+  };
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -67,7 +75,12 @@ export function TopSection({ items, showAddToGrid = true, onAddClick }: TopSecti
             <ArrowDownToLine className="size-7 text-neutral-300" strokeWidth={2} />
           </DashedTile>
           {items.map((item) => (
-            <DropBarTile key={item.id} item={item} onRemove={(id) => backend.dropBar.remove(id)} />
+            <DropBarTile
+              key={item.id}
+              item={item}
+              onRemove={(id) => backend.dropBar.remove(id)}
+              onReorderRequest={handleReorder}
+            />
           ))}
         </div>
       </ContextMenuTrigger>

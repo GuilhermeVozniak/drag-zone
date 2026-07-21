@@ -368,15 +368,66 @@ static NSString *statusSymbol(int state) {
     }
 }
 
+// Current status-item visuals; both written only on the main queue (every
+// setter dispatches there) and read only by redrawStatusIcon on main.
+static int statusState = 0;
+static double statusProgress = -1;
+
+// redrawStatusIcon composes the status item image: the state symbol plus,
+// while tasks report determinate progress, a ring sweeping clockwise from
+// 12 o'clock. Main thread only.
+static void redrawStatusIcon(void) {
+    if (statusItem == nil) {
+        return;
+    }
+    NSImage *symbol = [NSImage imageWithSystemSymbolName:statusSymbol(statusState)
+                                accessibilityDescription:@"DragZone"];
+    symbol.template = YES;
+    if (statusProgress < 0 || symbol == nil) {
+        statusItem.button.image = symbol;
+        return;
+    }
+    double fraction = statusProgress;
+    NSSize size = NSMakeSize(20, 20);
+    NSImage *img = [NSImage imageWithSize:size
+                                  flipped:NO
+                           drawingHandler:^BOOL(NSRect dst) {
+        NSRect symbolRect = NSInsetRect(dst, 3, 3);
+        [symbol drawInRect:symbolRect];
+        CGPoint center = CGPointMake(NSMidX(dst), NSMidY(dst));
+        CGFloat radius = 8.5;
+        NSBezierPath *track =
+            [NSBezierPath bezierPathWithOvalInRect:NSMakeRect(center.x - radius, center.y - radius,
+                                                              radius * 2, radius * 2)];
+        track.lineWidth = 1.75;
+        [[NSColor.labelColor colorWithAlphaComponent:0.25] setStroke];
+        [track stroke];
+        NSBezierPath *arc = [NSBezierPath bezierPath];
+        [arc appendBezierPathWithArcWithCenter:center
+                                        radius:radius
+                                    startAngle:90
+                                      endAngle:90 - 360 * fraction
+                                     clockwise:YES];
+        arc.lineWidth = 1.75;
+        arc.lineCapStyle = NSLineCapStyleRound;
+        [NSColor.labelColor setStroke];
+        [arc stroke];
+        return YES;
+    }];
+    statusItem.button.image = img;
+}
+
 void dz_set_status_state(int state) {
     dispatch_async(dispatch_get_main_queue(), ^{
-        if (statusItem == nil) {
-            return;
-        }
-        NSImage *img = [NSImage imageWithSystemSymbolName:statusSymbol(state)
-                                 accessibilityDescription:@"DragZone"];
-        img.template = YES;
-        statusItem.button.image = img;
+        statusState = state;
+        redrawStatusIcon();
+    });
+}
+
+void dz_set_status_progress(double fraction) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        statusProgress = fraction;
+        redrawStatusIcon();
     });
 }
 
@@ -388,6 +439,21 @@ char *dz_clipboard_file_paths(void) {
         return NULL;
     }
     return jsonFromURLs(urls);
+}
+
+void dz_copy_file_paths_to_pasteboard(const char *jsonPaths) {
+    NSArray<NSString *> *paths = pathsFromJSON(jsonPaths);
+    if (paths.count == 0) {
+        return;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSMutableArray<NSURL *> *urls = [NSMutableArray array];
+        for (NSString *p in paths) {
+            [urls addObject:[NSURL fileURLWithPath:p]];
+        }
+        [NSPasteboard.generalPasteboard clearContents];
+        [NSPasteboard.generalPasteboard writeObjects:urls];
+    });
 }
 
 // --- Status item -------------------------------------------------------

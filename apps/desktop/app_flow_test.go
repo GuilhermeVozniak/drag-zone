@@ -27,14 +27,15 @@ func (s *flowServices) CopyToClipboard(text string) error {
 	s.clipboard = text
 	return nil
 }
-func (s *flowServices) ReadClipboard() (string, error) { return "", nil }
-func (s *flowServices) Notify(string, string)          {}
-func (s *flowServices) PlaySound(string)               {}
-func (s *flowServices) OpenURL(string) error           { return nil }
-func (s *flowServices) OpenPath(string) error          { return nil }
-func (s *flowServices) Reveal(string) error            { return nil }
-func (s *flowServices) Trash([]string) error           { return nil }
-func (s *flowServices) AirDrop([]string) error         { return nil }
+func (s *flowServices) ReadClipboard() (string, error)            { return "", nil }
+func (s *flowServices) CopyFilesToClipboard(paths []string) error { return nil }
+func (s *flowServices) Notify(string, string)                     {}
+func (s *flowServices) PlaySound(string)                          {}
+func (s *flowServices) OpenURL(string) error                      { return nil }
+func (s *flowServices) OpenPath(string) error                     { return nil }
+func (s *flowServices) Reveal(string) error                       { return nil }
+func (s *flowServices) Trash([]string) error                      { return nil }
+func (s *flowServices) AirDrop([]string) error                    { return nil }
 
 func (s *flowServices) clipboardText() string {
 	s.mu.Lock()

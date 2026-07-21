@@ -26,8 +26,14 @@ type Host struct {
 	// AddDropBar stashes file paths in the Drop Bar.
 	AddDropBar func(paths []string)
 	// RequestInput shows an input dialog and blocks until the user answers.
-	// ok is false when the user cancelled.
-	RequestInput func(title, prompt string) (value string, ok bool)
+	// ok is false when the user cancelled or the task's context was cancelled.
+	RequestInput func(ctx context.Context, title, prompt string) (value string, ok bool)
+	// Console receives the script's raw output lines (plain stdout and
+	// stderr) for the debug console. Optional.
+	Console func(line string)
+	// RunFailed is called when the script run ends in an error; the app uses
+	// it to auto-open the debug console, like Dropzone. Optional.
+	RunFailed func()
 }
 
 // ScriptAction adapts a .dzbundle to the actions.Action interface.
@@ -112,7 +118,23 @@ func (s *ScriptAction) run(ctx context.Context, inv actions.Invocation, event st
 		draggedType = "text"
 	}
 
+	// UseSelectedItemNameAndIcon: a bare run (no drop) operates on the
+	// current Finder selection.
+	if s.meta.UseSelectedItemNameAndIcon && inv.Payload.IsEmpty() {
+		if sel := finderSelection(ctx); len(sel) > 0 {
+			args = append(args, sel...)
+			draggedType = "files"
+		}
+	}
+
 	cmd := exec.CommandContext(ctx, s.interpreter, args...)
+	if s.meta.RunsSandboxed {
+		if wrapped, ok := sandboxedCommand(ctx, s.interpreter, args); ok {
+			cmd = wrapped
+		} else {
+			s.consoleLine("warning: sandbox-exec unavailable; running unsandboxed")
+		}
+	}
 	cmd.Dir = s.bundlePath
 	cmd.Env = append(os.Environ(),
 		"DZ_ACTION_SCRIPT="+s.scriptPath,
@@ -133,27 +155,57 @@ func (s *ScriptAction) run(ctx context.Context, inv actions.Invocation, event st
 	if err != nil {
 		return actions.Result{}, err
 	}
-	cmd.Stderr = os.Stderr
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return actions.Result{}, err
+	}
 	if err := cmd.Start(); err != nil {
 		return actions.Result{}, fmt.Errorf("starting %s: %w", s.meta.Name, err)
 	}
+	// Drain stderr concurrently: a script writing enough stderr to fill the
+	// pipe would otherwise deadlock against our stdout-only scan.
+	stderrDone := make(chan struct{})
+	go func() {
+		defer close(stderrDone)
+		sc := bufio.NewScanner(stderr)
+		for sc.Scan() {
+			s.consoleLine("stderr: " + sc.Text())
+		}
+	}()
 
-	res, scriptErr := s.consumeProtocol(stdout, stdin, inv)
+	res, scriptErr := s.consumeProtocol(ctx, stdout, stdin, inv)
 	stdin.Close()
 	waitErr := cmd.Wait()
+	<-stderrDone
 	if scriptErr != nil {
+		s.runFailed()
 		return actions.Result{}, scriptErr
 	}
 	if waitErr != nil {
+		s.runFailed()
 		return actions.Result{}, fmt.Errorf("%s exited abnormally: %w", s.meta.Name, waitErr)
 	}
 	return res, nil
 }
 
+// consoleLine forwards one line of raw script output to the debug console.
+func (s *ScriptAction) consoleLine(line string) {
+	if s.host.Console != nil {
+		s.host.Console(line)
+	}
+}
+
+// runFailed reports a failed script run (for console auto-open).
+func (s *ScriptAction) runFailed() {
+	if s.host.RunFailed != nil {
+		s.host.RunFailed()
+	}
+}
+
 // consumeProtocol parses DZX: lines from the script's stdout, applying
 // progress and side effects as they stream in. stdin is used to answer
 // interactive requests (inputbox).
-func (s *ScriptAction) consumeProtocol(r io.Reader, stdin io.Writer, inv actions.Invocation) (actions.Result, error) {
+func (s *ScriptAction) consumeProtocol(ctx context.Context, r io.Reader, stdin io.Writer, inv actions.Invocation) (actions.Result, error) {
 	var res actions.Result
 	var failMsg string
 	var dropBarPaths []string
@@ -164,7 +216,10 @@ func (s *ScriptAction) consumeProtocol(r io.Reader, stdin io.Writer, inv actions
 		line := sc.Text()
 		rest, ok := strings.CutPrefix(line, "DZX:")
 		if !ok {
-			continue // plain puts/print output is ignored, like Dropzone's console
+			// Plain puts/print output goes to the debug console, like
+			// Dropzone's; it carries no protocol meaning.
+			s.consoleLine(line)
+			continue
 		}
 		kind, payload, _ := strings.Cut(rest, ":")
 		payload = strings.ReplaceAll(payload, "", "\n")
@@ -213,7 +268,7 @@ func (s *ScriptAction) consumeProtocol(r io.Reader, stdin io.Writer, inv actions
 		case "INPUTBOX":
 			answer, ok := "", false
 			if s.host.RequestInput != nil {
-				answer, ok = s.host.RequestInput(a, b)
+				answer, ok = s.host.RequestInput(ctx, a, b)
 			}
 			if !ok {
 				answer = ""
@@ -274,6 +329,16 @@ func LoadBundle(bundlePath string, host Host) (*ScriptAction, error) {
 	}
 	if meta.UniqueID == "" {
 		meta.UniqueID = filepath.Base(bundlePath)
+	}
+	if meta.MinDropzoneVersion != "" && VersionNewer(meta.MinDropzoneVersion, CurrentAppVersion) {
+		return nil, fmt.Errorf("%s requires DragZone %s or newer (running %s)",
+			meta.Name, meta.MinDropzoneVersion, CurrentAppVersion)
+	}
+	// Tag console output with the action name so interleaved runs stay
+	// readable in the shared debug console.
+	if host.Console != nil {
+		base := host.Console
+		host.Console = func(line string) { base(meta.Name + ": " + line) }
 	}
 	var iconB64 string
 	if data, err := os.ReadFile(filepath.Join(bundlePath, "icon.png")); err == nil {

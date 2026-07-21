@@ -53,9 +53,17 @@ void dz_set_drag_overlay_enabled(bool enabled);
 // 0 normal (tray+arrow), 1 drag, 2 running, 3 success, 4 failure.
 void dz_set_status_state(int state);
 
+// Aggregate task progress ring on the status item, 0.0-1.0; a negative
+// fraction clears the ring. Drawn over whatever state icon is current.
+void dz_set_status_progress(double fraction);
+
 // Returns a malloc'd JSON array of file paths currently on the general
 // pasteboard, or NULL when it holds no file URLs. Caller frees.
 char *dz_clipboard_file_paths(void);
+
+// Replaces the general pasteboard with file URLs for the given JSON array of
+// paths, so the files can be pasted into Finder and other apps.
+void dz_copy_file_paths_to_pasteboard(const char *jsonPaths);
 
 // Reports whether the Option key is currently held.
 bool dz_option_key_down(void);

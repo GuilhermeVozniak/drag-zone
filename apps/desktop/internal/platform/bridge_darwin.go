@@ -152,6 +152,10 @@ const (
 // SetStatusState switches the menu bar icon between its feedback states.
 func SetStatusState(state int) { C.dz_set_status_state(C.int(state)) }
 
+// SetStatusProgress draws the aggregate task progress ring on the menu bar
+// icon; a negative fraction clears it.
+func SetStatusProgress(fraction float64) { C.dz_set_status_progress(C.double(fraction)) }
+
 // ClipboardFilePaths returns file paths currently on the pasteboard, if any.
 func ClipboardFilePaths() []string {
 	res := C.dz_clipboard_file_paths()
@@ -169,6 +173,21 @@ func ClipboardFilePaths() []string {
 // OptionKeyDown reports whether the Option key is currently held, used to
 // invert folder copy/move behavior and populate KEY_MODIFIERS for scripts.
 func OptionKeyDown() bool { return bool(C.dz_option_key_down()) }
+
+// CopyFilePathsToClipboard places file URLs on the general pasteboard so the
+// files can be pasted into Finder and other apps.
+func CopyFilePathsToClipboard(paths []string) {
+	if len(paths) == 0 {
+		return
+	}
+	data, err := json.Marshal(paths)
+	if err != nil {
+		return
+	}
+	c := C.CString(string(data))
+	defer C.free(unsafe.Pointer(c))
+	C.dz_copy_file_paths_to_pasteboard(c)
+}
 
 // SetPinned keeps the grid window visible across app deactivation, used by
 // the popped-out Drop Bar mode.

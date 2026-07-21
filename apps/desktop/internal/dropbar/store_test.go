@@ -58,6 +58,42 @@ func TestAddLabelsAndStacks(t *testing.T) {
 	}
 }
 
+func TestMoveReorders(t *testing.T) {
+	t.Setenv(storage.EnvDataDir, t.TempDir())
+	s := load(t)
+	a, _ := s.Add(model.Payload{Kind: model.ItemText, Text: "a"})
+	b, _ := s.Add(model.Payload{Kind: model.ItemText, Text: "b"})
+	c, _ := s.Add(model.Payload{Kind: model.ItemText, Text: "c"})
+
+	// Move the last item to the front.
+	if err := s.Move(c.ID, 0); err != nil {
+		t.Fatal(err)
+	}
+	items := s.List()
+	if items[0].ID != c.ID || items[1].ID != a.ID || items[2].ID != b.ID {
+		t.Fatalf("after move-to-front: %+v", items)
+	}
+
+	// Move it back to the end (index clamps to len).
+	if err := s.Move(c.ID, 99); err != nil {
+		t.Fatal(err)
+	}
+	items = s.List()
+	if items[2].ID != c.ID {
+		t.Fatalf("after move-to-end: %+v", items)
+	}
+
+	if err := s.Move("missing", 0); err == nil {
+		t.Error("Move with unknown id should error")
+	}
+
+	// Order persists across reload.
+	s2 := load(t)
+	if got := s2.List(); got[0].ID != a.ID || got[1].ID != b.ID || got[2].ID != c.ID {
+		t.Fatalf("order not persisted: %+v", got)
+	}
+}
+
 func TestCombine(t *testing.T) {
 	t.Setenv(storage.EnvDataDir, t.TempDir())
 	s := load(t)

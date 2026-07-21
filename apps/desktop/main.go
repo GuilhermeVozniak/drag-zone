@@ -9,6 +9,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 
+	"dragzone/internal/bundles"
 	"dragzone/internal/platform"
 )
 
@@ -25,6 +26,7 @@ const (
 var appVersion = "0.2.0"
 
 func main() {
+	bundles.CurrentAppVersion = appVersion
 	app, err := NewApp(platform.Services{})
 	if err != nil {
 		log.Fatalf("initializing app: %v", err)

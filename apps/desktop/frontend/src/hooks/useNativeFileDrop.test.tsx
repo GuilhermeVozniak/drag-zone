@@ -3,13 +3,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useNativeFileDrop } from "@/hooks/useNativeFileDrop";
 import { __fireEvent, __resetBackendMock } from "@/lib/__mocks__/backend";
 import { backend, type DropBarItem } from "@/lib/backend";
-import { getDraggingDropBarItem, setDraggingDropBarItem, setUIScale } from "@/lib/dnd";
+import {
+  __resetNativeFileDropForTests,
+  getDraggingDropBarItem,
+  setDraggingDropBarItem,
+  setUIScale,
+} from "@/lib/dnd";
 import { __emitFileDrop, __resetRuntimeStub } from "@/test/stubs/runtime";
 
 vi.mock("@/lib/backend");
 
 beforeEach(() => {
   __resetRuntimeStub();
+  __resetNativeFileDropForTests();
   __resetBackendMock();
   setUIScale(1);
   setDraggingDropBarItem(null);
@@ -42,11 +48,20 @@ describe("useNativeFileDrop", () => {
     drop("add-to-grid", ["/a", "/b"]);
     expect(backend.grid.addFromPaths).toHaveBeenCalledWith(["/a", "/b"]);
   });
-  it("runs the action and hides the window for a normal target", () => {
+  it("runs the action and hides the window for a normal target", async () => {
     renderHook(() => useNativeFileDrop());
     drop("t123", ["/a.txt"]);
     expect(backend.drop).toHaveBeenCalledWith("t123", { kind: "files", paths: ["/a.txt"] });
-    expect(backend.window.hide).toHaveBeenCalled();
+    // The window hides once the drop binding resolves.
+    await vi.waitFor(() => expect(backend.window.hide).toHaveBeenCalled());
+  });
+  it("keeps the window open and reports when the drop fails", async () => {
+    vi.mocked(backend.drop).mockRejectedValueOnce(new Error("no such target"));
+    renderHook(() => useNativeFileDrop());
+    drop("t123", ["/a.txt"]);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(backend.window.hide).not.toHaveBeenCalled();
   });
   it("ignores drops with no target under the cursor", () => {
     renderHook(() => useNativeFileDrop());

@@ -36,17 +36,70 @@ export function getDraggingDropBarItem(): string | null {
 
 export interface DropHandler {
   /** Called with the drop-id of the element under the cursor (or null). */
-  onFiles(dropId: string | null, paths: string[]): void;
+  onFiles(dropId: string | null, paths: string[], zone: DropZone): void;
 }
+
+/**
+ * Where within the target tile the cursor landed: the outer 30% edges mean
+ * "reorder next to this tile", the center means "act on this tile" (combine
+ * for Drop Bar items, run the action for grid tiles).
+ */
+export type DropZone = "before" | "after" | "center";
 
 /** Registers the global native file-drop listener. Call once. */
 export function initNativeFileDrop(handler: DropHandler) {
+  // Wails ignores OnFileDrop re-registration (its internal `registered`
+  // guard), and this hook's host remounts on every window show — so the
+  // runtime listener is attached exactly once and always dispatches to the
+  // latest handler. Without the slot, the first mount's stale closure (and
+  // its frozen Drop Bar item list) would handle drops forever.
+  currentHandler = handler;
+  if (registered) return;
+  registered = true;
   OnFileDrop((x, y, paths) => {
-    document.body.classList.remove("native-dragging");
     const el = document.elementFromPoint(x / scale, y / scale);
     const dropEl = el?.closest<HTMLElement>("[data-drop-id]");
-    handler.onFiles(dropEl?.dataset.dropId ?? null, paths);
+    currentHandler?.onFiles(dropEl?.dataset.dropId ?? null, paths, dropZone(dropEl, x / scale));
   }, true);
+}
+
+function dropZone(dropEl: HTMLElement | null | undefined, x: number): DropZone {
+  if (!dropEl) return "center";
+  const rect = dropEl.getBoundingClientRect();
+  if (rect.width <= 0) return "center";
+  const rel = (x - rect.left) / rect.width;
+  if (rel < 0.3) return "before";
+  if (rel > 0.7) return "after";
+  return "center";
+}
+
+/**
+ * Index to pass to dropBar.move so sourceId lands just before (or after)
+ * targetId. The backend interprets the index post-removal (like grid.Move).
+ * Returns null when either id is unknown or they're the same item.
+ */
+export function reorderIndex(
+  items: { id: string }[],
+  sourceId: string,
+  targetId: string,
+  after: boolean,
+): number | null {
+  if (sourceId === targetId) return null;
+  const sourceIdx = items.findIndex((i) => i.id === sourceId);
+  const targetIdx = items.findIndex((i) => i.id === targetId);
+  if (sourceIdx < 0 || targetIdx < 0) return null;
+  let idx = targetIdx + (after ? 1 : 0);
+  if (sourceIdx < idx) idx -= 1;
+  return idx;
+}
+
+let currentHandler: DropHandler | null = null;
+let registered = false;
+
+/** Test-only: clears the registration guard so each test re-registers. */
+export function __resetNativeFileDropForTests() {
+  currentHandler = null;
+  registered = false;
 }
 
 /** Extracts a payload from an HTML5 drop event (text/URL drags, not files). */

@@ -13,6 +13,7 @@ export type Settings = config.Settings;
 export type AddonInfo = main.AddonInfo;
 export type UpdateInfo = main.UpdateInfo;
 export type Share = main.Share;
+export type ConsoleLine = main.ConsoleLine;
 export type Target = model.Target;
 export type ActionSpec = model.ActionSpec;
 export type OptionField = model.OptionField;
@@ -42,6 +43,7 @@ export const backend = {
     installBundle: App.InstallBundle,
     openFolder: App.OpenActionsFolder,
     develop: App.DevelopAction,
+    copyEditScript: App.CopyScriptForEditing,
   },
   grid: {
     list: App.Targets,
@@ -78,12 +80,17 @@ export const backend = {
     separate: App.DropBarSeparate,
     combineAll: App.DropBarCombineAll,
     combine: App.DropBarCombine,
+    move: App.DropBarMove,
     copyToClipboard: App.DropBarCopyToClipboard,
     reveal: App.DropBarReveal,
     paste: App.DropBarPaste,
   },
   quickLook: App.QuickLook,
   answerInput: App.AnswerInputRequest,
+  console: {
+    lines: App.ConsoleLines,
+    clear: App.ClearConsole,
+  },
   addons: {
     list: App.ListAddons,
     install: App.InstallAddon,
@@ -99,6 +106,7 @@ export const backend = {
   dialogs: {
     chooseFolder: App.ChooseFolder,
     chooseApplication: App.ChooseApplication,
+    chooseBundle: App.ChooseBundle,
   },
   dragOut: App.StartDragOut,
   fileIcon: App.FileIcon,
@@ -138,4 +146,8 @@ export const events = {
    * on this signal so a stale id can never leak into a later, unrelated
    * drop. */
   onDropBarDragEnded: (fn: () => void) => EventsOn("dropbar:dragended", fn),
+  /** Debug console buffer changed (a script wrote stdout/stderr). */
+  onConsoleChanged: (fn: (lines: ConsoleLine[]) => void) => EventsOn("console:changed", fn),
+  /** A script run failed; Dropzone auto-opens the debug console on this. */
+  onConsoleError: (fn: () => void) => EventsOn("console:error", fn),
 };

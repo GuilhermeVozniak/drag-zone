@@ -6,7 +6,13 @@ const afn = () => vi.fn(async () => undefined);
 
 export const backend = {
   settings: { get: afn(), set: afn(), open: afn(), close: afn() },
-  actions: { specs: afn(), installBundle: afn(), openFolder: afn(), develop: afn() },
+  actions: {
+    specs: afn(),
+    installBundle: afn(),
+    openFolder: afn(),
+    develop: afn(),
+    copyEditScript: afn(),
+  },
   grid: {
     list: afn(),
     add: afn(),
@@ -33,16 +39,18 @@ export const backend = {
     separate: afn(),
     combineAll: afn(),
     combine: afn(),
+    move: afn(),
     copyToClipboard: afn(),
     reveal: afn(),
     paste: afn(),
   },
   quickLook: afn(),
   answerInput: afn(),
+  console: { lines: afn(), clear: afn() },
   addons: { list: afn(), install: afn() },
   cli: { installed: afn(), install: afn() },
   updates: { check: afn(), version: afn() },
-  dialogs: { chooseFolder: afn(), chooseApplication: afn() },
+  dialogs: { chooseFolder: afn(), chooseApplication: afn(), chooseBundle: afn() },
   dragOut: afn(),
   fileIcon: afn(),
   openURL: afn(),
@@ -77,6 +85,8 @@ export const events = {
   onSharesChanged: sub("shares:changed"),
   onDragActive: sub("drag:active"),
   onDropBarDragEnded: sub("dropbar:dragended"),
+  onConsoleChanged: sub("console:changed"),
+  onConsoleError: sub("console:error"),
 };
 
 // --- test helpers ---

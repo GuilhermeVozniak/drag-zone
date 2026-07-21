@@ -9,6 +9,7 @@ import {
   Plus,
   Power,
   Settings as SettingsIcon,
+  TerminalSquare,
   Wrench,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -21,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { TopSection } from "@/features/dropbar/TopSection";
+import { ConsoleDrawer } from "@/features/tasks/ConsoleDrawer";
 import { TaskList } from "@/features/tasks/TaskList";
 import {
   useActionSpecs,
@@ -32,7 +34,9 @@ import {
 } from "@/hooks/useBackend";
 import { useNativeFileDrop } from "@/hooks/useNativeFileDrop";
 import { useTargetShortcuts } from "@/hooks/useTargetShortcuts";
-import { backend, type Target } from "@/lib/backend";
+import { backend, events, type Target } from "@/lib/backend";
+import { reportError } from "@/lib/report";
+import { gridInputBlocked } from "@/lib/uistate";
 import { AddTargetDialog } from "./AddTargetDialog";
 import { clickBehavior } from "./clickBehavior";
 import { DropTargetOverlay } from "./DropTargetOverlay";
@@ -57,6 +61,10 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) =
   const [addingSpecId, setAddingSpecId] = useState<string | null>(null);
   const [topCollapsed, setTopCollapsed] = useState(false);
   const [optionHeld, setOptionHeld] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+
+  // A failed script run auto-opens the debug console, like Dropzone.
+  useEffect(() => events.onConsoleError(() => setConsoleOpen(true)), []);
 
   // Option puts the grid in delete mode (X badges on tiles), like Dropzone.
   useEffect(() => {
@@ -78,9 +86,10 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) =
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
       if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable) return;
+      if (gridInputBlocked()) return;
       if (e.metaKey && e.key.toLowerCase() === "v") {
         e.preventDefault();
-        backend.dropBar.paste();
+        backend.dropBar.paste().catch((err) => reportError("Couldn't paste", err));
       }
     };
     window.addEventListener("keydown", onKey);
@@ -93,7 +102,7 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) =
     const spec = specs.find((s) => s.id === specId);
     if (!spec) return;
     if (!spec.options || spec.options.length === 0) {
-      backend.grid.add(spec.id, spec.name, {});
+      backend.grid.add(spec.id, spec.name, {}).catch((err) => reportError("Couldn't add", err));
       return;
     }
     setEditing(null);
@@ -114,7 +123,7 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) =
         openConfig(t);
         break;
       case "run":
-        backend.click(t.id);
+        backend.click(t.id).catch((err) => reportError(`Couldn't run ${t.label}`, err));
         break;
       // "none": drag-only action with nothing to configure.
     }
@@ -130,12 +139,16 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) =
   const dropBarItemOnTarget = async (targetId: string, itemId: string) => {
     const item = dropBarItems.find((i) => i.id === itemId);
     if (!item) return;
-    await backend.drop(targetId, {
-      kind: item.kind as "files" | "text" | "url",
-      paths: item.paths,
-      text: item.text,
-    });
-    await backend.dropBar.consume(itemId); // leaves the bar unless locked
+    try {
+      await backend.drop(targetId, {
+        kind: item.kind as "files" | "text" | "url",
+        paths: item.paths,
+        text: item.text,
+      });
+      await backend.dropBar.consume(itemId); // leaves the bar unless locked
+    } catch (err) {
+      reportError("Drop failed", err);
+    }
   };
 
   const cols = settings?.gridColumns ?? 4;
@@ -165,11 +178,28 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) =
           optionHeld={optionHeld}
           onClick={() => handleClick(t)}
           onEdit={() => openConfig(t)}
-          onDuplicate={() => backend.grid.duplicate(t.id)}
-          onRemove={() => backend.grid.remove(t.id)}
+          onDuplicate={() =>
+            backend.grid.duplicate(t.id).catch((err) => reportError("Couldn't duplicate", err))
+          }
+          onRemove={() =>
+            backend.grid.remove(t.id).catch((err) => reportError("Couldn't remove", err))
+          }
+          onCopyEditScript={() =>
+            backend.actions
+              .copyEditScript(t.id)
+              .catch((err) => reportError("Couldn't copy script", err))
+          }
           onDropBarItemDrop={(itemId) => dropBarItemOnTarget(t.id, itemId)}
-          onTextDrop={(text, isUrl) => backend.drop(t.id, { kind: isUrl ? "url" : "text", text })}
-          onReorder={(draggedId) => backend.grid.move(draggedId, t.position)}
+          onTextDrop={(text, isUrl) =>
+            backend
+              .drop(t.id, { kind: isUrl ? "url" : "text", text })
+              .catch((err) => reportError("Drop failed", err))
+          }
+          onReorder={(draggedId) =>
+            backend.grid
+              .move(draggedId, t.position)
+              .catch((err) => reportError("Couldn't move", err))
+          }
         />
       ))}
     </div>
@@ -187,7 +217,16 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) =
             <DropdownMenuTrigger asChild>
               <button
                 className="flex size-7 items-center justify-center rounded-md hover:bg-white/10"
-                title="Add to Grid"
+                title="Add to Grid (⌥-click to Develop Action)"
+                onPointerDown={(e) => {
+                  // Dropzone's Option+plus shortcut: skip the catalogue menu
+                  // and go straight to the Develop Action workflow.
+                  if (e.altKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onOpenSettings("general");
+                  }
+                }}
               >
                 <Plus className="size-4 text-neutral-200" />
               </button>
@@ -242,6 +281,9 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) =
               <DropdownMenuItem onClick={() => backend.actions.openFolder()}>
                 <FolderCog className="size-3.5" /> Open Add-on Actions Folder
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setConsoleOpen((o) => !o)}>
+                <TerminalSquare className="size-3.5" /> Debug Console
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => backend.openURL("https://github.com/GuilhermeVozniak/drag-zone")}
               >
@@ -288,6 +330,8 @@ export function GridPanel({ onOpenSettings }: { onOpenSettings: (tab?: string) =
           />
         </Section>
       )}
+
+      {consoleOpen && <ConsoleDrawer onClose={() => setConsoleOpen(false)} />}
 
       <AddTargetDialog
         open={addOpen}

@@ -37,11 +37,15 @@ type Config struct {
 	// OnTask is called when a task starts (TaskRunning) and when it finishes
 	// (TaskDone/TaskError); used for menu bar icon feedback. Optional.
 	OnTask func(status model.TaskStatus)
+	// OnProgress is called after any task's percent changes; used for the
+	// aggregate menu bar progress indicator. Optional.
+	OnProgress func()
 	// OnResultURL is called when a task produces a shareable URL. Optional.
 	OnResultURL func(title, url string)
 	// Prompt lets a running action ask the user to choose among options (e.g.
-	// file-conflict resolution). Optional; nil disables prompting.
-	Prompt func(title, message string, choices []string) (string, bool)
+	// file-conflict resolution). Optional; nil disables prompting. The ctx is
+	// the task's: cancelling the task must unblock a pending prompt.
+	Prompt func(ctx context.Context, title, message string, choices []string) (string, bool)
 	// AddDropBar stashes file paths in the Drop Bar; it backs
 	// Invocation.AddDropBar. Optional; nil disables the capability.
 	AddDropBar func(paths []string)
@@ -117,20 +121,28 @@ func (r *Runner) Run(ctx context.Context, act actions.Action, target model.Targe
 	if save := r.cfg.SaveTargetOption; save != nil {
 		inv.SaveOption = func(key, value string) { save(target.ID, key, value) }
 	}
-	inv.Prompt = r.cfg.Prompt
+	if r.cfg.Prompt != nil {
+		inv.Prompt = func(title, message string, choices []string) (string, bool) {
+			return r.cfg.Prompt(ctx, title, message, choices)
+		}
+	}
 	inv.AddDropBar = r.cfg.AddDropBar
 	go r.execute(ctx, exec, inv, id)
 	return id, nil
 }
 
 func (r *Runner) execute(ctx context.Context, exec func(context.Context, actions.Invocation) (actions.Result, error), inv actions.Invocation, id string) {
-	res, err := exec(ctx, inv)
+	res, err := r.invoke(ctx, exec, inv)
 	if ctx.Err() == context.Canceled {
 		err = fmt.Errorf("cancelled")
 	}
 
 	r.mu.Lock()
 	state := r.tasks[id]
+	if state == nil {
+		r.mu.Unlock()
+		return
+	}
 	state.FinishedAt = time.Now()
 	if err != nil {
 		state.Status = model.TaskError
@@ -165,6 +177,17 @@ func (r *Runner) execute(ctx context.Context, exec func(context.Context, actions
 			r.cfg.Services.PlaySound("Glass")
 		}
 	}
+}
+
+// invoke runs the action, converting a panic into an error so a buggy action
+// fails its task instead of crashing the whole app.
+func (r *Runner) invoke(ctx context.Context, exec func(context.Context, actions.Invocation) (actions.Result, error), inv actions.Invocation) (res actions.Result, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("action panicked: %v", p)
+		}
+	}()
+	return exec(ctx, inv)
 }
 
 // List returns task states, most recent first.
@@ -230,4 +253,7 @@ func (p *reporter) Percent(pct int) {
 	}
 	p.runner.mu.Unlock()
 	p.runner.publish()
+	if p.runner.cfg.OnProgress != nil {
+		p.runner.cfg.OnProgress()
+	}
 }

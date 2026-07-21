@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,7 +49,40 @@ func (a *App) bundleHost() bundles.Host {
 			_, _ = a.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: paths})
 		},
 		RequestInput: a.requestInput,
+		Console:      a.appendConsole,
+		RunFailed:    func() { a.emit(EventConsoleError) },
 	}
+}
+
+// appendConsole adds one line to the debug console buffer and notifies the
+// frontend. The buffer is capped; oldest lines drop off.
+func (a *App) appendConsole(line string) {
+	a.consoleMu.Lock()
+	a.consoleLines = append(a.consoleLines, ConsoleLine{Line: line, At: time.Now()})
+	if len(a.consoleLines) > consoleCap {
+		a.consoleLines = a.consoleLines[len(a.consoleLines)-consoleCap:]
+	}
+	lines := make([]ConsoleLine, len(a.consoleLines))
+	copy(lines, a.consoleLines)
+	a.consoleMu.Unlock()
+	a.emit(EventConsoleChanged, lines)
+}
+
+// ConsoleLines returns the debug console buffer.
+func (a *App) ConsoleLines() []ConsoleLine {
+	a.consoleMu.Lock()
+	defer a.consoleMu.Unlock()
+	lines := make([]ConsoleLine, len(a.consoleLines))
+	copy(lines, a.consoleLines)
+	return lines
+}
+
+// ClearConsole empties the debug console.
+func (a *App) ClearConsole() {
+	a.consoleMu.Lock()
+	a.consoleLines = nil
+	a.consoleMu.Unlock()
+	a.emit(EventConsoleChanged, []ConsoleLine{})
 }
 
 // inputRequest is the payload sent to the frontend for a dz.inputbox text
@@ -62,18 +96,19 @@ type inputRequest struct {
 }
 
 // requestInput shows a text-input dialog and blocks the caller (a running
-// action script) until the user answers or the timeout passes.
-func (a *App) requestInput(title, prompt string) (string, bool) {
-	return a.promptUser(title, prompt, nil)
+// action script) until the user answers, the task is cancelled, or the
+// timeout passes.
+func (a *App) requestInput(ctx context.Context, title, prompt string) (string, bool) {
+	return a.promptUser(ctx, title, prompt, nil)
 }
 
 // requestChoice shows a button dialog and returns the chosen label; it backs
 // Invocation.Prompt so built-in actions can resolve file conflicts.
-func (a *App) requestChoice(title, message string, choices []string) (string, bool) {
-	return a.promptUser(title, message, choices)
+func (a *App) requestChoice(ctx context.Context, title, message string, choices []string) (string, bool) {
+	return a.promptUser(ctx, title, message, choices)
 }
 
-func (a *App) promptUser(title, prompt string, choices []string) (string, bool) {
+func (a *App) promptUser(ctx context.Context, title, prompt string, choices []string) (string, bool) {
 	id := uuid.NewString()
 	ch := make(chan inputAnswer, 1)
 	a.inputMu.Lock()
@@ -91,6 +126,8 @@ func (a *App) promptUser(title, prompt string, choices []string) (string, bool) 
 	select {
 	case ans := <-ch:
 		return ans.Value, ans.OK
+	case <-ctx.Done():
+		return "", false
 	case <-time.After(inputTimeout):
 		return "", false
 	}
@@ -102,7 +139,10 @@ func (a *App) AnswerInputRequest(id, value string, ok bool) {
 	ch := a.inputReqs[id]
 	a.inputMu.Unlock()
 	if ch != nil {
-		ch <- inputAnswer{Value: value, OK: ok}
+		select {
+		case ch <- inputAnswer{Value: value, OK: ok}:
+		default:
+		}
 	}
 }
 
@@ -150,6 +190,43 @@ func (a *App) DevelopAction(name, language string) error {
 	}
 	a.emit(EventSpecsChanged, a.registry.Specs())
 	return a.services.OpenPath(bundle)
+}
+
+// CopyScriptForEditing duplicates a script action's bundle into the Actions
+// directory with a fresh UniqueID, registers the copy, and opens its script
+// for editing — Dropzone's tile "Copy and Edit Script".
+func (a *App) CopyScriptForEditing(targetID string) error {
+	t, err := a.grid.Get(targetID)
+	if err != nil {
+		return err
+	}
+	act, err := a.registry.Get(t.ActionID)
+	if err != nil {
+		return err
+	}
+	script, ok := act.(*bundles.ScriptAction)
+	if !ok {
+		return fmt.Errorf("only script actions can be copied for editing")
+	}
+	dir, err := actionsDir()
+	if err != nil {
+		return err
+	}
+	bundle, scriptPath, err := script.CopyForEditing(dir)
+	if err != nil {
+		return err
+	}
+	dup, err := bundles.LoadBundle(bundle, a.bundleHost())
+	if err != nil {
+		os.RemoveAll(bundle)
+		return err
+	}
+	if err := a.registry.TryRegister(dup); err != nil {
+		os.RemoveAll(bundle)
+		return err
+	}
+	a.emit(EventSpecsChanged, a.registry.Specs())
+	return a.services.OpenPath(scriptPath)
 }
 
 // AddonInfo describes one entry of the official add-on catalogue.

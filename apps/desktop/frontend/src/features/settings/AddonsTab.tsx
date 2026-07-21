@@ -1,13 +1,16 @@
 import { Package } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { type AddonInfo, backend } from "@/lib/backend";
+import { reportError } from "@/lib/report";
 
 type InstallState = "installing" | "done" | string; // string = error message
 
 /**
  * Mirrors Dropzone 4's Add-on Actions tab: the live catalogue from the
- * official aptonic/dropzone4-actions repository with one-click install.
+ * official aptonic/dropzone4-actions repository with one-click install, plus
+ * installing a local .dzbundle from disk.
  */
 export function AddonsTab() {
   const [addons, setAddons] = useState<AddonInfo[] | null>(null);
@@ -28,6 +31,19 @@ export function AddonsTab() {
       setInstallState((s) => ({ ...s, [name]: "done" }));
     } catch (e) {
       setInstallState((s) => ({ ...s, [name]: String(e) }));
+    }
+  };
+
+  const installFromDisk = async () => {
+    try {
+      const path = await backend.dialogs.chooseBundle();
+      if (!path) return; // cancelled
+      await backend.actions.installBundle(path);
+      toast.success("Action installed", {
+        description: "It now appears in the “+” menu.",
+      });
+    } catch (e) {
+      reportError("Couldn't install bundle", e);
     }
   };
 
@@ -72,14 +88,19 @@ export function AddonsTab() {
           );
         })}
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="mt-2 self-start text-xs"
-        onClick={() => backend.actions.openFolder()}
-      >
-        Open Add-on Actions Folder
-      </Button>
+      <div className="mt-2 flex items-center gap-2 self-start">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-xs"
+          onClick={() => backend.actions.openFolder()}
+        >
+          Open Add-on Actions Folder
+        </Button>
+        <Button variant="secondary" size="sm" className="text-xs" onClick={installFromDisk}>
+          Install from Disk…
+        </Button>
+      </div>
     </div>
   );
 }

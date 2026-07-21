@@ -61,14 +61,17 @@ func TestParseMeta(t *testing.T) {
 type fakeServices struct{ clipboard string }
 
 func (f *fakeServices) CopyToClipboard(text string) error { f.clipboard = text; return nil }
-func (f *fakeServices) ReadClipboard() (string, error)    { return f.clipboard, nil }
-func (f *fakeServices) Notify(title, body string)         {}
-func (f *fakeServices) PlaySound(name string)             {}
-func (f *fakeServices) OpenURL(url string) error          { return nil }
-func (f *fakeServices) OpenPath(path string) error        { return nil }
-func (f *fakeServices) Reveal(path string) error          { return nil }
-func (f *fakeServices) Trash(paths []string) error        { return nil }
-func (f *fakeServices) AirDrop(paths []string) error      { return nil }
+func (f *fakeServices) CopyFilesToClipboard(paths []string) error {
+	return nil
+}
+func (f *fakeServices) ReadClipboard() (string, error) { return f.clipboard, nil }
+func (f *fakeServices) Notify(title, body string)      {}
+func (f *fakeServices) PlaySound(name string)          {}
+func (f *fakeServices) OpenURL(url string) error       { return nil }
+func (f *fakeServices) OpenPath(path string) error     { return nil }
+func (f *fakeServices) Reveal(path string) error       { return nil }
+func (f *fakeServices) Trash(paths []string) error     { return nil }
+func (f *fakeServices) AirDrop(paths []string) error   { return nil }
 
 type fakeProgress struct {
 	details []string

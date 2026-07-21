@@ -36,6 +36,8 @@ interface TargetTileProps {
   onEdit: () => void;
   onDuplicate: () => void;
   onRemove: () => void;
+  /** "Copy and Edit Script" — only wired for bundle (scripted) actions. */
+  onCopyEditScript?: () => void;
   onDropBarItemDrop: (itemId: string) => void;
   onTextDrop: (text: string, isUrl: boolean) => void;
   onReorder: (draggedTargetId: string) => void;
@@ -52,6 +54,7 @@ export function TargetTile({
   onEdit,
   onDuplicate,
   onRemove,
+  onCopyEditScript,
   onDropBarItemDrop,
   onTextDrop,
   onReorder,
@@ -167,6 +170,9 @@ export function TargetTile({
       <ContextMenuContent>
         <ContextMenuItem onClick={onEdit}>Edit…</ContextMenuItem>
         <ContextMenuItem onClick={onDuplicate}>Duplicate</ContextMenuItem>
+        {target.actionId.startsWith("bundle:") && onCopyEditScript && (
+          <ContextMenuItem onClick={onCopyEditScript}>Copy and Edit Script</ContextMenuItem>
+        )}
         <ContextMenuSeparator />
         <ContextMenuItem variant="destructive" onClick={onRemove}>
           Remove from Grid

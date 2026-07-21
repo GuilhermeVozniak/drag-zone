@@ -30,15 +30,16 @@ type recSvc struct {
 	sounds []string
 }
 
-func (s *recSvc) CopyToClipboard(string) error   { return nil }
-func (s *recSvc) ReadClipboard() (string, error) { return "", nil }
-func (s *recSvc) Notify(t, b string)             { s.mu.Lock(); s.notes = append(s.notes, t); s.mu.Unlock() }
-func (s *recSvc) PlaySound(n string)             { s.mu.Lock(); s.sounds = append(s.sounds, n); s.mu.Unlock() }
-func (s *recSvc) OpenURL(string) error           { return nil }
-func (s *recSvc) OpenPath(string) error          { return nil }
-func (s *recSvc) Reveal(string) error            { return nil }
-func (s *recSvc) Trash([]string) error           { return nil }
-func (s *recSvc) AirDrop([]string) error         { return nil }
+func (s *recSvc) CopyToClipboard(string) error              { return nil }
+func (s *recSvc) ReadClipboard() (string, error)            { return "", nil }
+func (s *recSvc) CopyFilesToClipboard(paths []string) error { return nil }
+func (s *recSvc) Notify(t, b string)                        { s.mu.Lock(); s.notes = append(s.notes, t); s.mu.Unlock() }
+func (s *recSvc) PlaySound(n string)                        { s.mu.Lock(); s.sounds = append(s.sounds, n); s.mu.Unlock() }
+func (s *recSvc) OpenURL(string) error                      { return nil }
+func (s *recSvc) OpenPath(string) error                     { return nil }
+func (s *recSvc) Reveal(string) error                       { return nil }
+func (s *recSvc) Trash([]string) error                      { return nil }
+func (s *recSvc) AirDrop([]string) error                    { return nil }
 
 // newRunner returns a runner with a no-op Emit; tests wait for the terminal
 // state by polling List() via waitDone.

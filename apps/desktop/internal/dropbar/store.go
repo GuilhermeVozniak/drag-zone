@@ -2,6 +2,7 @@
 package dropbar
 
 import (
+	"fmt"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -48,14 +49,19 @@ func Load() (*Store, error) {
 }
 
 // List returns all items, oldest first. It never returns nil, so the value
-// marshals to a JSON array (not null) for the frontend.
+// marshals to a JSON array (not null) for the frontend. Paths slices are
+// cloned so callers never alias the store's mutable state.
 func (s *Store) List() []Item {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.items) == 0 {
 		return []Item{}
 	}
-	return slices.Clone(s.items)
+	out := slices.Clone(s.items)
+	for i := range out {
+		out[i].Paths = slices.Clone(out[i].Paths)
+	}
+	return out
 }
 
 // Get returns the item with the given ID.
@@ -64,6 +70,7 @@ func (s *Store) Get(id string) (Item, bool) {
 	defer s.mu.Unlock()
 	for _, it := range s.items {
 		if it.ID == id {
+			it.Paths = slices.Clone(it.Paths)
 			return it, true
 		}
 	}
@@ -77,12 +84,13 @@ func (s *Store) Add(p model.Payload) (Item, error) {
 	it := Item{
 		ID:      uuid.NewString(),
 		Kind:    p.Kind,
-		Paths:   p.Paths,
+		Paths:   slices.Clone(p.Paths),
 		Text:    p.Text,
 		Label:   labelFor(p),
 		AddedAt: time.Now(),
 	}
 	s.items = append(s.items, it)
+	it.Paths = slices.Clone(it.Paths)
 	return it, s.save()
 }
 
@@ -211,6 +219,22 @@ func (s *Store) Remove(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.items = slices.DeleteFunc(s.items, func(it Item) bool { return it.ID == id })
+	return s.save()
+}
+
+// Move places the item at the given index, shifting the others. The index
+// refers to the list after the item is removed (mirroring grid.Move).
+func (s *Store) Move(id string, index int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	idx := slices.IndexFunc(s.items, func(it Item) bool { return it.ID == id })
+	if idx < 0 {
+		return fmt.Errorf("no item with id %q", id)
+	}
+	it := s.items[idx]
+	s.items = slices.Delete(s.items, idx, idx+1)
+	index = max(0, min(index, len(s.items)))
+	s.items = slices.Insert(s.items, index, it)
 	return s.save()
 }
 

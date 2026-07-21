@@ -45,7 +45,7 @@ const ACTIONS: { icon: LucideIcon; tint: string; title: string; body: string }[]
     icon: ClipboardCopy,
     tint: "from-blue-400 to-indigo-600",
     title: "Copy to Clipboard",
-    body: "Put file contents or paths straight on the clipboard.",
+    body: "Put files or text straight on the clipboard, ready to paste anywhere.",
   },
   {
     icon: ImageIcon,

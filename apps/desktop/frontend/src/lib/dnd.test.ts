@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { initNativeFileDrop, payloadFromDataTransfer, setUIScale } from "@/lib/dnd";
+import {
+  __resetNativeFileDropForTests,
+  initNativeFileDrop,
+  payloadFromDataTransfer,
+  reorderIndex,
+  setUIScale,
+} from "@/lib/dnd";
 import { __emitFileDrop, __resetRuntimeStub } from "@/test/stubs/runtime";
 
 function fakeDT(data: Record<string, string>): DataTransfer {
@@ -8,6 +14,7 @@ function fakeDT(data: Record<string, string>): DataTransfer {
 
 beforeEach(() => {
   __resetRuntimeStub();
+  __resetNativeFileDropForTests();
   setUIScale(1);
   document.body.innerHTML = "";
   vi.restoreAllMocks();
@@ -42,7 +49,7 @@ describe("initNativeFileDrop", () => {
     const onFiles = vi.fn();
     initNativeFileDrop({ onFiles });
     __emitFileDrop(100, 200, ["/a.txt"]);
-    expect(onFiles).toHaveBeenCalledWith("dropbar", ["/a.txt"]);
+    expect(onFiles).toHaveBeenCalledWith("dropbar", ["/a.txt"], "center");
   });
   it("un-zooms the cursor coordinates by the UI scale before hit-testing", () => {
     setUIScale(2);
@@ -56,13 +63,54 @@ describe("initNativeFileDrop", () => {
     const onFiles = vi.fn();
     initNativeFileDrop({ onFiles });
     __emitFileDrop(1, 1, ["/a"]);
-    expect(onFiles).toHaveBeenCalledWith(null, ["/a"]);
+    expect(onFiles).toHaveBeenCalledWith(null, ["/a"], "center");
   });
-  it("clears the native-dragging body class on drop", () => {
-    document.body.classList.add("native-dragging");
+  it("classifies the drop zone from the cursor's position within the tile", () => {
+    document.body.innerHTML = `<div data-drop-id="item1"></div>`;
+    const el = document.querySelector("[data-drop-id]") as HTMLElement;
+    vi.spyOn(document, "elementFromPoint").mockReturnValue(el);
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue({
+      left: 100,
+      width: 80,
+    } as DOMRect);
+    const onFiles = vi.fn();
+    initNativeFileDrop({ onFiles });
+    __emitFileDrop(110, 10, ["/a"]); // rel 0.125 -> before
+    __emitFileDrop(140, 10, ["/a"]); // rel 0.5 -> center
+    __emitFileDrop(170, 10, ["/a"]); // rel 0.875 -> after
+    expect(onFiles).toHaveBeenNthCalledWith(1, "item1", ["/a"], "before");
+    expect(onFiles).toHaveBeenNthCalledWith(2, "item1", ["/a"], "center");
+    expect(onFiles).toHaveBeenNthCalledWith(3, "item1", ["/a"], "after");
+  });
+  it("dispatches to the latest handler after a remount (Wails ignores re-registration)", () => {
     vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
-    initNativeFileDrop({ onFiles: vi.fn() });
-    __emitFileDrop(1, 1, []);
-    expect(document.body.classList.contains("native-dragging")).toBe(false);
+    const first = vi.fn();
+    const second = vi.fn();
+    initNativeFileDrop({ onFiles: first });
+    initNativeFileDrop({ onFiles: second });
+    __emitFileDrop(1, 1, ["/a"]);
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledWith(null, ["/a"], "center");
+  });
+});
+
+describe("reorderIndex", () => {
+  const items = [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }];
+  it("moves a later item before an earlier one", () => {
+    expect(reorderIndex(items, "d", "b", false)).toBe(1);
+  });
+  it("moves a later item after an earlier one", () => {
+    expect(reorderIndex(items, "d", "b", true)).toBe(2);
+  });
+  it("moves an earlier item before a later one (post-removal index)", () => {
+    expect(reorderIndex(items, "a", "c", false)).toBe(1);
+  });
+  it("moves an earlier item after a later one (post-removal index)", () => {
+    expect(reorderIndex(items, "a", "c", true)).toBe(2);
+  });
+  it("returns null for the same item or unknown ids", () => {
+    expect(reorderIndex(items, "a", "a", false)).toBeNull();
+    expect(reorderIndex(items, "x", "a", false)).toBeNull();
+    expect(reorderIndex(items, "a", "x", true)).toBeNull();
   });
 });

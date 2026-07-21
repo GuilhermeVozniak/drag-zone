@@ -1,6 +1,12 @@
 import { useEffect, useRef } from "react";
 import { backend, type DropBarItem, events } from "@/lib/backend";
-import { getDraggingDropBarItem, initNativeFileDrop, setDraggingDropBarItem } from "@/lib/dnd";
+import {
+  getDraggingDropBarItem,
+  initNativeFileDrop,
+  reorderIndex,
+  setDraggingDropBarItem,
+} from "@/lib/dnd";
+import { reportError } from "@/lib/report";
 
 /**
  * Routes native (Wails) file drops to whatever is under the cursor: the
@@ -18,7 +24,7 @@ export function useNativeFileDrop(dropBarItems: DropBarItem[] = []) {
 
   useEffect(() => {
     initNativeFileDrop({
-      onFiles(dropId, paths) {
+      onFiles(dropId, paths, zone) {
         // Capture the in-flight drag-out source (if any) and clear the
         // global immediately, before any branching below, so it is valid
         // for at most this one drop. Without this, a drag-out that resolves
@@ -36,28 +42,48 @@ export function useNativeFileDrop(dropBarItems: DropBarItem[] = []) {
         if (!dropId || paths.length === 0) return;
         backend.playDropSound();
         if (dropId === "dropbar") {
-          backend.dropBar.add({ kind: "files", paths });
+          backend.dropBar
+            .add({ kind: "files", paths })
+            .catch((err) => reportError("Couldn't stash", err));
           return;
         }
         if (dropId === "add-to-grid") {
-          backend.grid.addFromPaths(paths);
+          backend.grid.addFromPaths(paths).catch((err) => reportError("Couldn't add", err));
           return;
         }
         const isDropBarItem = itemsRef.current.some((item) => item.id === dropId);
         if (isDropBarItem) {
           if (sourceId && sourceId !== dropId) {
-            backend.dropBar.combine(dropId, sourceId);
+            // Landing on a tile's edge reorders next to it; landing on the
+            // center combines into a stack (Dropzone's behavior).
+            if (zone !== "center") {
+              const idx = reorderIndex(itemsRef.current, sourceId, dropId, zone === "after");
+              if (idx != null) {
+                backend.dropBar
+                  .move(sourceId, idx)
+                  .catch((err) => reportError("Couldn't reorder", err));
+                return;
+              }
+            }
+            backend.dropBar
+              .combine(dropId, sourceId)
+              .catch((err) => reportError("Couldn't combine", err));
           } else {
             // Not a drag-out-in-progress (e.g. an external Finder file
             // dropped over an existing tile): fall back to the plain stash.
-            backend.dropBar.add({ kind: "files", paths });
+            backend.dropBar
+              .add({ kind: "files", paths })
+              .catch((err) => reportError("Couldn't stash", err));
           }
           return;
         }
         // Like Dropzone: the grid closes right after a drop on an action;
-        // the task keeps running with progress in the menu bar icon.
-        backend.drop(dropId, { kind: "files", paths });
-        backend.window.hide();
+        // the task keeps running with progress in the menu bar icon. On
+        // failure the window stays open so the error toast is seen.
+        backend
+          .drop(dropId, { kind: "files", paths })
+          .then(() => backend.window.hide())
+          .catch((err) => reportError("Drop failed", err));
       },
     });
     // Belt-and-suspenders: the Go side emits this after every drag-out

@@ -180,6 +180,15 @@ func (a *App) ChooseApplication() (string, error) {
 	})
 }
 
+// ChooseBundle opens a picker for a .dzbundle to install from disk.
+func (a *App) ChooseBundle() (string, error) {
+	return runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:                      "Install Action Bundle",
+		TreatPackagesAsDirectories: false,
+		Filters:                    []runtime.FileFilter{{DisplayName: "Action Bundles", Pattern: "*.dzbundle"}},
+	})
+}
+
 func (a *App) HideWindow() {
 	platform.HideGrid()
 }

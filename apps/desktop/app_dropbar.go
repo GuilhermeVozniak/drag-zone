@@ -143,6 +143,16 @@ func (a *App) DropBarCombine(targetID, sourceID string) error {
 	return nil
 }
 
+// DropBarMove reorders an item to the given index (post-removal, like
+// grid.Move), used when an item is dragged to a new spot in the bar.
+func (a *App) DropBarMove(id string, index int) error {
+	if err := a.dropBar.Move(id, index); err != nil {
+		return err
+	}
+	a.emit(EventDropBarChanged, a.dropBar.List())
+	return nil
+}
+
 // OpenPath opens a file or folder with its default application, used to open
 // one thumbnail of a Drop Bar stack straight from the fanned-out preview.
 func (a *App) OpenPath(path string) error {
@@ -191,5 +201,12 @@ func (a *App) QuickLook(paths []string) error {
 	if len(paths) == 0 {
 		return nil
 	}
-	return exec.Command("qlmanage", append([]string{"-p"}, paths...)...).Start()
+	cmd := exec.Command("qlmanage", append([]string{"-p"}, paths...)...)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	// Reap the child so qlmanage doesn't linger as a zombie for the app's
+	// (menu-bar-length) lifetime.
+	go func() { _ = cmd.Wait() }()
+	return nil
 }

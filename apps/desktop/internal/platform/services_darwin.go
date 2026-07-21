@@ -19,6 +19,13 @@ func (Services) CopyToClipboard(text string) error {
 	return cmd.Run()
 }
 
+// CopyFilesToClipboard places file URLs on the general pasteboard so the
+// files can be pasted into Finder and other apps.
+func (Services) CopyFilesToClipboard(paths []string) error {
+	CopyFilePathsToClipboard(paths)
+	return nil
+}
+
 // ReadClipboard returns the general pasteboard's text contents.
 func (Services) ReadClipboard() (string, error) {
 	out, err := exec.Command("pbpaste").Output()

@@ -43,6 +43,8 @@ const (
 	EventSharesChanged    = "shares:changed"
 	EventDragActive       = "drag:active"
 	EventDropBarDragEnded = "dropbar:dragended"
+	EventConsoleChanged   = "console:changed"
+	EventConsoleError     = "console:error"
 )
 
 // App wires the subsystems together and is the bindings facade exposed to the
@@ -76,7 +78,19 @@ type App struct {
 	taskMu       sync.Mutex
 	runningTasks int
 	recentShares []Share
+
+	consoleMu    sync.Mutex
+	consoleLines []ConsoleLine
 }
+
+// ConsoleLine is one line of script output in the debug console.
+type ConsoleLine struct {
+	Line string    `json:"line"`
+	At   time.Time `json:"at"`
+}
+
+// consoleCap bounds the debug console buffer; oldest lines drop off.
+const consoleCap = 500
 
 // Share is one entry of the "Recently Shared" menu.
 type Share struct {
@@ -100,7 +114,8 @@ func (a *App) taskFeedback(status model.TaskStatus) {
 			a.runningTasks--
 		}
 		if a.runningTasks > 0 {
-			return // still busy, keep the running state
+			a.applyStatusProgress() // still busy, keep the running state
+			return
 		}
 		if status == model.TaskError {
 			platform.SetStatusState(platform.StatusFailure)
@@ -115,6 +130,32 @@ func (a *App) taskFeedback(status model.TaskStatus) {
 			}
 		})
 	}
+}
+
+// updateStatusProgress reflects the running tasks' mean completion as a
+// progress ring on the menu bar icon; indeterminate-only runs clear it.
+func (a *App) updateStatusProgress() {
+	a.taskMu.Lock()
+	defer a.taskMu.Unlock()
+	a.applyStatusProgress()
+}
+
+// applyStatusProgress is updateStatusProgress with a.taskMu already held.
+func (a *App) applyStatusProgress() {
+	var sum float64
+	var n int
+	for _, t := range a.runner.List() {
+		if t.Status != model.TaskRunning || t.Percent < 0 {
+			continue
+		}
+		sum += float64(t.Percent)
+		n++
+	}
+	if n == 0 {
+		platform.SetStatusProgress(-1)
+		return
+	}
+	platform.SetStatusProgress(sum / float64(n) / 100)
 }
 
 // addRecentShare records a shared URL for the Recently Shared menu.
@@ -188,6 +229,7 @@ func NewApp(services actions.Services) (*App, error) {
 		SoundsEnabled:    func() bool { return settings.Get().PlaySounds },
 		SaveTargetOption: a.saveTargetOption,
 		OnTask:           a.taskFeedback,
+		OnProgress:       a.updateStatusProgress,
 		OnResultURL:      a.addRecentShare,
 		Prompt:           a.requestChoice,
 		AddDropBar:       func(paths []string) { _, _ = a.DropBarAdd(model.Payload{Kind: model.ItemFiles, Paths: paths}) },
@@ -294,19 +336,10 @@ func (a *App) emit(event string, data ...any) {
 // saveTargetOption persists one option value on a grid target. It backs both
 // script save_value calls and actions that rotate credentials (Google Drive).
 func (a *App) saveTargetOption(targetID, key, value string) {
-	t, err := a.grid.Get(targetID)
-	if err != nil {
+	if err := a.grid.SetOption(targetID, key, value); err != nil {
 		return
 	}
-	if t.Options == nil {
-		t.Options = map[string]string{}
-	}
-	if value == "" {
-		delete(t.Options, key)
-	} else {
-		t.Options[key] = value
-	}
-	_ = a.UpdateTarget(t)
+	a.emit(EventGridChanged, a.grid.List())
 }
 
 // defaultTargets seeds the grid on first launch.

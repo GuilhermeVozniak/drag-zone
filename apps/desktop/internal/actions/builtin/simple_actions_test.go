@@ -25,11 +25,13 @@ func TestClipboardCopiesTextAndPaths(t *testing.T) {
 	if err != nil || svc.Clipboard != "hello" || res.Message != "Copied to clipboard" {
 		t.Fatalf("text: clip=%q res=%+v err=%v", svc.Clipboard, res, err)
 	}
+	// Files go on the pasteboard as file URLs (pasteable as files), not as
+	// path text.
 	svc = &recServices{}
 	_, err = CopyToClipboard{}.Dropped(context.Background(),
 		inv(model.Payload{Kind: model.ItemFiles, Paths: []string{"/a", "/b"}}, svc))
-	if err != nil || svc.Clipboard != "/a\n/b" {
-		t.Fatalf("files: clip=%q err=%v", svc.Clipboard, err)
+	if err != nil || len(svc.ClipFiles) != 2 || svc.ClipFiles[0] != "/a" || svc.ClipFiles[1] != "/b" {
+		t.Fatalf("files: clipFiles=%v err=%v", svc.ClipFiles, err)
 	}
 }
 

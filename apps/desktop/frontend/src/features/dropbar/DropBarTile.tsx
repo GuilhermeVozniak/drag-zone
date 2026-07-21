@@ -76,6 +76,8 @@ function StackFan({ paths }: { paths: string[] }) {
 interface DropBarTileProps {
   item: DropBarItem;
   onRemove: (id: string) => void;
+  /** Another item was dropped on this tile's left/right half: reorder. */
+  onReorderRequest?: (sourceId: string, targetId: string, after: boolean) => void;
 }
 
 /**
@@ -84,7 +86,7 @@ interface DropBarTileProps {
  * text/URL items use HTML5 drag for in-window drops onto grid tiles. A
  * single click on a file item (or stack) Quick Looks its contents.
  */
-export function DropBarTile({ item, onRemove }: DropBarTileProps) {
+export function DropBarTile({ item, onRemove, onReorderRequest }: DropBarTileProps) {
   const Icon = itemIcon(item);
   const count = item.paths?.length ?? 0;
   const nativeIcon = useFileIcon(item.paths?.[0]);
@@ -142,8 +144,10 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
           // forwards a native drag hovering the window as ordinary drag
           // events. The actual combine happens through the native file-drop
           // path (see useNativeFileDrop); this only drives the highlight.
+          // HTML5 drags of text/URL items (DROPBAR_MIME) are accepted too:
+          // dropping one on a tile's left/right half reorders the bar.
           onDragOver={(e) => {
-            if (isFiles) e.preventDefault();
+            if (isFiles || e.dataTransfer.types.includes(DROPBAR_MIME)) e.preventDefault();
           }}
           onDragEnter={(e) => {
             if (isFiles) {
@@ -155,6 +159,12 @@ export function DropBarTile({ item, onRemove }: DropBarTileProps) {
           onDrop={(e) => {
             e.preventDefault();
             setCombineHover(false);
+            const sourceId = e.dataTransfer.getData(DROPBAR_MIME);
+            if (sourceId && sourceId !== item.id && onReorderRequest) {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const after = (e.clientX - rect.left) / Math.max(rect.width, 1) > 0.5;
+              onReorderRequest(sourceId, item.id, after);
+            }
           }}
           className={`group relative flex w-[72px] cursor-grab flex-col items-center gap-1 rounded-lg p-1.5 hover:bg-white/[0.08] ${
             combineHover ? "bg-sky-500/20 ring-2 ring-sky-400/80" : ""
