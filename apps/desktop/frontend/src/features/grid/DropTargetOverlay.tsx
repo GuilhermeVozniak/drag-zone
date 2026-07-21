@@ -12,7 +12,9 @@ interface DropTargetOverlayProps {
  * native (Finder) file drag is in progress over it. Always mounted so it
  * can animate in/out on the `active` flag instead of popping; it is
  * `pointer-events-none` throughout so it never intercepts the actual drop —
- * that is still resolved by useNativeFileDrop via elementFromPoint.
+ * that is still resolved by useNativeFileDrop via elementsFromPoint. The
+ * background is translucent so the tiles underneath stay visible: users
+ * still aim at a specific Drop Bar tile to stack onto it.
  */
 export function DropTargetOverlay({ active }: DropTargetOverlayProps) {
   return (
@@ -26,7 +28,7 @@ export function DropTargetOverlay({ active }: DropTargetOverlayProps) {
         active ? "opacity-100" : "opacity-0",
       )}
       style={{
-        background: "var(--panel-bg)",
+        background: "color-mix(in srgb, var(--panel-bg) 45%, transparent)",
         borderColor: "var(--drop-overlay-border)",
       }}
     >

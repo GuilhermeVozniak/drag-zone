@@ -45,21 +45,34 @@ describe("payloadFromDataTransfer", () => {
 describe("initNativeFileDrop", () => {
   it("resolves the drop-id from the element under the cursor", () => {
     document.body.innerHTML = `<div data-drop-id="dropbar"><span id="child"></span></div>`;
-    vi.spyOn(document, "elementFromPoint").mockReturnValue(document.getElementById("child"));
+    const child = document.getElementById("child") as Element;
+    vi.spyOn(document, "elementsFromPoint").mockReturnValue([child]);
     const onFiles = vi.fn();
     initNativeFileDrop({ onFiles });
     __emitFileDrop(100, 200, ["/a.txt"]);
     expect(onFiles).toHaveBeenCalledWith("dropbar", ["/a.txt"], "center");
   });
+  it("walks past see-through layers (drop overlay) to the tile beneath", () => {
+    document.body.innerHTML = `
+      <div id="tile" data-drop-id="t123"></div>
+      <div id="overlay"></div>`;
+    const overlay = document.getElementById("overlay") as Element;
+    const tile = document.getElementById("tile") as Element;
+    vi.spyOn(document, "elementsFromPoint").mockReturnValue([overlay, tile]);
+    const onFiles = vi.fn();
+    initNativeFileDrop({ onFiles });
+    __emitFileDrop(10, 10, ["/a.txt"]);
+    expect(onFiles).toHaveBeenCalledWith("t123", ["/a.txt"], "center");
+  });
   it("un-zooms the cursor coordinates by the UI scale before hit-testing", () => {
     setUIScale(2);
-    const spy = vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
+    const spy = vi.spyOn(document, "elementsFromPoint").mockReturnValue([]);
     initNativeFileDrop({ onFiles: vi.fn() });
     __emitFileDrop(100, 200, ["/a"]);
     expect(spy).toHaveBeenCalledWith(50, 100);
   });
   it("passes a null drop-id when nothing is under the cursor", () => {
-    vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
+    vi.spyOn(document, "elementsFromPoint").mockReturnValue([]);
     const onFiles = vi.fn();
     initNativeFileDrop({ onFiles });
     __emitFileDrop(1, 1, ["/a"]);
@@ -68,7 +81,7 @@ describe("initNativeFileDrop", () => {
   it("classifies the drop zone from the cursor's position within the tile", () => {
     document.body.innerHTML = `<div data-drop-id="item1"></div>`;
     const el = document.querySelector("[data-drop-id]") as HTMLElement;
-    vi.spyOn(document, "elementFromPoint").mockReturnValue(el);
+    vi.spyOn(document, "elementsFromPoint").mockReturnValue([el]);
     vi.spyOn(el, "getBoundingClientRect").mockReturnValue({
       left: 100,
       width: 80,
@@ -83,7 +96,7 @@ describe("initNativeFileDrop", () => {
     expect(onFiles).toHaveBeenNthCalledWith(3, "item1", ["/a"], "after");
   });
   it("dispatches to the latest handler after a remount (Wails ignores re-registration)", () => {
-    vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
+    vi.spyOn(document, "elementsFromPoint").mockReturnValue([]);
     const first = vi.fn();
     const second = vi.fn();
     initNativeFileDrop({ onFiles: first });

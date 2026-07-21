@@ -27,11 +27,10 @@ beforeEach(() => {
 function drop(dropId: string | null, paths: string[]) {
   if (dropId) {
     document.body.innerHTML = `<div data-drop-id="${dropId}"></div>`;
-    vi.spyOn(document, "elementFromPoint").mockReturnValue(
-      document.querySelector("[data-drop-id]"),
-    );
+    const el = document.querySelector("[data-drop-id]") as Element;
+    vi.spyOn(document, "elementsFromPoint").mockReturnValue([el]);
   } else {
-    vi.spyOn(document, "elementFromPoint").mockReturnValue(null);
+    vi.spyOn(document, "elementsFromPoint").mockReturnValue([]);
   }
   __emitFileDrop(10, 10, paths);
 }

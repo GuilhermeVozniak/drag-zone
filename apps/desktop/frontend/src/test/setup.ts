@@ -21,6 +21,9 @@ Element.prototype.releasePointerCapture ||= () => {};
 if (!document.elementFromPoint) {
   document.elementFromPoint = () => null;
 }
+if (!document.elementsFromPoint) {
+  document.elementsFromPoint = () => [];
+}
 
 afterEach(() => {
   cleanup();

@@ -57,10 +57,24 @@ export function initNativeFileDrop(handler: DropHandler) {
   if (registered) return;
   registered = true;
   OnFileDrop((x, y, paths) => {
-    const el = document.elementFromPoint(x / scale, y / scale);
-    const dropEl = el?.closest<HTMLElement>("[data-drop-id]");
+    const dropEl = dropTargetAt(x / scale, y / scale);
     currentHandler?.onFiles(dropEl?.dataset.dropId ?? null, paths, dropZone(dropEl, x / scale));
   }, true);
+}
+
+/**
+ * The first element with a data-drop-id in the hit-test stack at (x, y).
+ * Walks the whole stack rather than taking elementFromPoint's topmost hit
+ * so see-through layers above the tiles (the drop-target overlay is
+ * pointer-events-none but WKWebView hit-testing can still surface it)
+ * never swallow a drop meant for a tile underneath.
+ */
+function dropTargetAt(x: number, y: number): HTMLElement | null {
+  for (const el of document.elementsFromPoint(x, y)) {
+    const dropEl = el.closest<HTMLElement>("[data-drop-id]");
+    if (dropEl) return dropEl;
+  }
+  return null;
 }
 
 function dropZone(dropEl: HTMLElement | null | undefined, x: number): DropZone {
