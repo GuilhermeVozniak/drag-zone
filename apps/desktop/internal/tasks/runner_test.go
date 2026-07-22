@@ -137,7 +137,8 @@ func TestDismissRemovesFinishedTask(t *testing.T) {
 func TestCancelAbortsRunningTask(t *testing.T) {
 	release := make(chan struct{})
 	started := make(chan struct{})
-	r := newRunner(t, &recSvc{})
+	svc := &recSvc{}
+	r := newRunner(t, svc)
 	act := fakeAction{fn: func(inv actions.Invocation) (actions.Result, error) {
 		close(started)
 		<-release // block until cancelled context fires? we simply wait
@@ -148,7 +149,56 @@ func TestCancelAbortsRunningTask(t *testing.T) {
 	r.Cancel(id)
 	close(release)
 	st := waitDone(t, r)
-	if st.Status != model.TaskError || st.Error != "cancelled" {
+	if st.Status != model.TaskCancelled || st.Error != "" {
 		t.Errorf("cancelled task state = %+v", st)
+	}
+	// A user-requested stop is not a failure: no notification, no Basso.
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+	if len(svc.notes) != 0 || len(svc.sounds) != 0 {
+		t.Errorf("cancelled task should stay silent; notes=%v sounds=%v", svc.notes, svc.sounds)
+	}
+}
+
+func TestCancelDoesNotReportResultURL(t *testing.T) {
+	svc := &recSvc{}
+	var shares []string
+	r := NewRunner(Config{
+		Emit:          func(string, ...any) {},
+		Services:      svc,
+		NotifyEnabled: func() bool { return true },
+		OnResultURL:   func(_, url string) { shares = append(shares, url) },
+	})
+	started := make(chan struct{})
+	act := fakeAction{fn: func(actions.Invocation) (actions.Result, error) {
+		close(started)
+		<-time.After(20 * time.Millisecond) // outlive the cancel
+		return actions.Result{URL: "https://x/late"}, nil
+	}}
+	id, _ := r.Run(context.Background(), act, model.Target{ID: "t", Label: "T"}, model.Payload{}, model.EventDragged)
+	<-started
+	r.Cancel(id)
+	st := waitDone(t, r)
+	if st.Status != model.TaskCancelled {
+		t.Fatalf("state = %+v", st)
+	}
+	if len(shares) != 0 {
+		t.Errorf("cancelled task must not record shares: %v", shares)
+	}
+}
+
+func TestRunNilContextDefaultsToBackground(t *testing.T) {
+	r := newRunner(t, &recSvc{})
+	act := fakeAction{fn: func(actions.Invocation) (actions.Result, error) {
+		return actions.Result{Message: "ok"}, nil
+	}}
+	// The app facade can trigger actions before Wails startup (nil ctx);
+	// that must not panic.
+	//nolint:staticcheck // intentionally passing nil to exercise the guard
+	if _, err := r.Run(nil, act, model.Target{ID: "t", Label: "T"}, model.Payload{}, model.EventDragged); err != nil {
+		t.Fatal(err)
+	}
+	if st := waitDone(t, r); st.Status != model.TaskDone {
+		t.Errorf("state = %+v", st)
 	}
 }

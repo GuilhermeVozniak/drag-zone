@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // Drives the Drop Bar, the full-window Settings view, and the first-run
 // Onboarding carousel against the stateful mock backend (e2e/mock/backend.ts)

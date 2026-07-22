@@ -1,7 +1,10 @@
 package dropbar
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
+	"unicode/utf8"
 
 	"dragzone/internal/model"
 	"dragzone/internal/storage"
@@ -186,5 +189,85 @@ func TestLockRenameClearPersistence(t *testing.T) {
 	}
 	if items := reloaded.List(); len(items) != 0 {
 		t.Errorf("after clear: %+v", items)
+	}
+}
+
+func TestLabelForTruncatesByRunes(t *testing.T) {
+	t.Setenv(storage.EnvDataDir, t.TempDir())
+	s := load(t)
+
+	// 45 CJK characters: 135 bytes. A byte-slice cut at 40 would split a
+	// rune and produce invalid UTF-8; a rune-safe cut stays valid.
+	long := ""
+	for len([]rune(long)) < 45 {
+		long += "界"
+	}
+	it, err := s.Add(model.Payload{Kind: model.ItemText, Text: long})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !utf8.ValidString(it.Label) {
+		t.Errorf("label is not valid UTF-8: %q", it.Label)
+	}
+	if got := len([]rune(it.Label)); got != 41 { // 40 runes + ellipsis
+		t.Errorf("label length = %d runes, want 41: %q", got, it.Label)
+	}
+}
+
+func TestCombinePropagatesLocked(t *testing.T) {
+	t.Setenv(storage.EnvDataDir, t.TempDir())
+	s := load(t)
+
+	target, _ := s.Add(model.Payload{Kind: model.ItemFiles, Paths: []string{"/tmp/a.txt"}})
+	source, _ := s.Add(model.Payload{Kind: model.ItemFiles, Paths: []string{"/tmp/b.txt"}})
+	if err := s.SetLocked(source.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Combine(target.ID, source.ID); err != nil {
+		t.Fatal(err)
+	}
+	got, ok := s.Get(target.ID)
+	if !ok {
+		t.Fatal("combined item missing")
+	}
+	if !got.Locked {
+		t.Error("combining a locked source must keep the merged stack locked")
+	}
+}
+
+func TestCombineAllPropagatesLocked(t *testing.T) {
+	t.Setenv(storage.EnvDataDir, t.TempDir())
+	s := load(t)
+
+	a, _ := s.Add(model.Payload{Kind: model.ItemFiles, Paths: []string{"/tmp/a.txt"}})
+	_, _ = s.Add(model.Payload{Kind: model.ItemFiles, Paths: []string{"/tmp/b.txt"}})
+	if err := s.SetLocked(a.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CombineAll(); err != nil {
+		t.Fatal(err)
+	}
+	items := s.List()
+	if len(items) != 1 {
+		t.Fatalf("after CombineAll: %d items, want 1", len(items))
+	}
+	if !items[0].Locked {
+		t.Error("CombineAll with a locked constituent must lock the stack")
+	}
+}
+
+func TestAddRollsBackOnSaveFailure(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv(storage.EnvDataDir, dir)
+	s := load(t)
+	// Make persistence fail: a directory where dropbar.json should be.
+	if err := os.Mkdir(filepath.Join(dir, fileName), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Add(model.Payload{Kind: model.ItemText, Text: "x"}); err == nil {
+		t.Fatal("Add should report the save failure")
+	}
+	if got := s.List(); len(got) != 0 {
+		t.Errorf("failed Add must not linger in memory: %+v", got)
 	}
 }

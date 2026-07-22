@@ -327,6 +327,8 @@ let dropBarItems: DropBarItem[] = [
 
 let tasks: TaskState[] = [];
 let shares: Share[] = [];
+let consoleLines: { line: string; at: string }[] = [];
+let pendingPromptTask: string | null = null;
 const addons: AddonInfo[] = [
   { name: "google-drive", installed: false },
   { name: "s3-upload", installed: false },
@@ -457,9 +459,23 @@ function startTask(
   };
   tasks = [task, ...tasks];
   emitTasks();
+  // Test hooks keyed off the target label (real targets never use these):
+  // "(hang)"   — the task never completes, so specs can cancel it mid-run.
+  // "(prompt)" — the task waits on an input:request, answered via
+  //              AnswerInputRequest below (like a script's dz.inputbox).
+  if (target?.label.includes("(hang)")) return task;
+  if (target?.label.includes("(prompt)")) {
+    pendingPromptTask = id;
+    EventsEmit("input:request", {
+      id: `req-${id}`,
+      title: target.label,
+      prompt: "Enter a value",
+    });
+    return task;
+  }
   setTimeout(() => {
     const t = tasks.find((x) => x.id === id);
-    if (!t) return;
+    if (!t || t.status !== "running") return; // cancelled tasks stay cancelled
     t.percent = 100;
     t.status = "done";
     t.finishedAt = new Date().toISOString();
@@ -499,7 +515,14 @@ export async function DismissTask(id: string): Promise<void> {
 }
 
 export async function CancelTask(id: string): Promise<void> {
-  tasks = tasks.filter((t) => t.id !== id);
+  // Mirrors the real runner (internal/tasks/runner.go): cancelling marks the
+  // task "cancelled" — it stays in the list (not an error, not removed)
+  // until the user dismisses it.
+  const t = tasks.find((x) => x.id === id);
+  if (t && t.status === "running") {
+    t.status = "cancelled";
+    t.finishedAt = new Date().toISOString();
+  }
   emitTasks();
 }
 
@@ -510,7 +533,10 @@ export async function DropBarItems(): Promise<DropBarItem[]> {
 }
 
 function labelForPayload(payload: Payload): string {
-  if (payload.kind === "files") return payload.paths?.[0]?.split("/").pop() ?? "Files";
+  // Mirrors internal/dropbar/store.go's labelFor.
+  const n = payload.paths?.length ?? 0;
+  if (payload.kind === "files" && n === 1) return payload.paths![0].split("/").pop() ?? "Files";
+  if (payload.kind === "files" && n > 1) return `${n} Items`;
   if (payload.kind === "url") return payload.text ?? "Link";
   return payload.text?.slice(0, 40) ?? "Text";
 }
@@ -580,15 +606,37 @@ export async function DropBarCombineAll(): Promise<void> {
   const fileItems = dropBarItems.filter((i) => i.kind === "files");
   if (fileItems.length < 2) return;
   const rest = dropBarItems.filter((i) => i.kind !== "files");
+  const paths = fileItems.flatMap((i) => i.paths ?? []);
   const combined: DropBarItem = {
     id: genId("item"),
     kind: "files",
-    paths: fileItems.flatMap((i) => i.paths ?? []),
-    label: `${fileItems.length} items`,
-    locked: false,
+    paths,
+    label: `${paths.length} Items`, // mirrors Go's labelFor (path count)
+    locked: fileItems.some((i) => i.locked),
     addedAt: new Date().toISOString(),
   };
   dropBarItems = [combined, ...rest];
+  emitDropBar();
+}
+
+export async function DropBarCombine(targetId: string, sourceId: string): Promise<void> {
+  if (targetId === sourceId) return;
+  const target = dropBarItems.find((i) => i.id === targetId);
+  const source = dropBarItems.find((i) => i.id === sourceId);
+  if (!target || !source || target.kind !== "files" || source.kind !== "files") return;
+  target.paths = [...(target.paths ?? []), ...(source.paths ?? [])];
+  target.label = `${target.paths.length} Items`;
+  target.locked = target.locked || source.locked;
+  dropBarItems = dropBarItems.filter((i) => i.id !== sourceId);
+  emitDropBar();
+}
+
+export async function DropBarMove(id: string, index: number): Promise<void> {
+  const idx = dropBarItems.findIndex((i) => i.id === id);
+  if (idx < 0) return;
+  const [item] = dropBarItems.splice(idx, 1);
+  const clamped = Math.max(0, Math.min(index, dropBarItems.length));
+  dropBarItems.splice(clamped, 0, item);
   emitDropBar();
 }
 
@@ -596,7 +644,14 @@ export async function DropBarCopyToClipboard(_id: string): Promise<void> {}
 
 export async function DropBarReveal(_id: string): Promise<void> {}
 
-export async function DropBarPaste(): Promise<void> {}
+export async function DropBarPaste(): Promise<void> {
+  // Simulates a Finder clipboard holding two copied files (the real backend
+  // reads NSFilenamesPboardtype first, then falls back to plain text).
+  await DropBarAdd({
+    kind: "files",
+    paths: ["/Users/demo/Documents/report.pdf", "/Users/demo/Documents/notes.txt"],
+  });
+}
 
 export async function SetDropBarPopOut(popped: boolean): Promise<void> {
   EventsEmit("dropbar:popout", popped);
@@ -604,11 +659,32 @@ export async function SetDropBarPopOut(popped: boolean): Promise<void> {
 
 export async function QuickLook(_paths: string[]): Promise<void> {}
 
-export async function AnswerInputRequest(
-  _id: string,
-  _value: string,
-  _ok: boolean,
-): Promise<void> {}
+export async function AnswerInputRequest(_id: string, value: string, ok: boolean): Promise<void> {
+  // Resolve the task that emitted input:request (see startTask's "(prompt)"
+  // hook): an OK answer completes it with the value as its detail.
+  if (!pendingPromptTask) return;
+  const t = tasks.find((x) => x.id === pendingPromptTask);
+  pendingPromptTask = null;
+  if (!t || t.status !== "running") return;
+  t.percent = 100;
+  t.status = "done";
+  t.detail = ok ? value : undefined;
+  t.finishedAt = new Date().toISOString();
+  emitTasks();
+}
+
+export async function ConsoleLines(): Promise<{ line: string; at: string }[]> {
+  return consoleLines.slice();
+}
+
+export async function ClearConsole(): Promise<void> {
+  consoleLines = [];
+  EventsEmit("console:changed", []);
+}
+
+export async function CopyScriptForEditing(_targetId: string): Promise<void> {}
+
+export async function OpenPath(_path: string): Promise<void> {}
 
 export async function ListAddons(): Promise<AddonInfo[]> {
   return addons.slice();
@@ -646,6 +722,10 @@ export async function ChooseFolder(): Promise<string> {
 
 export async function ChooseApplication(): Promise<string> {
   return "/Applications/TextEdit.app";
+}
+
+export async function ChooseBundle(): Promise<string> {
+  return "/Users/demo/Downloads/cool-action.dzbundle";
 }
 
 export async function StartDragOut(_itemId: string): Promise<void> {}

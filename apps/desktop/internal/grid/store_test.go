@@ -1,6 +1,8 @@
 package grid
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"dragzone/internal/model"
@@ -77,5 +79,61 @@ func TestAddUpdateRemoveMove(t *testing.T) {
 		if tgt.Position != i {
 			t.Errorf("positions not compacted: %+v", got)
 		}
+	}
+}
+
+func TestSetOptionSetAndDelete(t *testing.T) {
+	t.Setenv(storage.EnvDataDir, t.TempDir())
+	s := load(t, nil)
+	tg, err := s.Add("folder", "F", map[string]string{"path": "/tmp"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.SetOption(tg.ID, "token", "abc"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.Get(tg.ID)
+	if got.Options["token"] != "abc" || got.Options["path"] != "/tmp" {
+		t.Errorf("options after set = %+v", got.Options)
+	}
+
+	// Empty value deletes the key (credential rotation cleanup).
+	if err := s.SetOption(tg.ID, "token", ""); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = s.Get(tg.ID)
+	if _, ok := got.Options["token"]; ok {
+		t.Errorf("token should be deleted: %+v", got.Options)
+	}
+
+	// SetOption on a target with nil Options must not panic.
+	t2, _ := s.Add("trash", "T", nil)
+	if err := s.SetOption(t2.ID, "k", "v"); err != nil {
+		t.Fatal(err)
+	}
+	got, _ = s.Get(t2.ID)
+	if got.Options["k"] != "v" {
+		t.Errorf("options on previously-nil map = %+v", got.Options)
+	}
+
+	if err := s.SetOption("missing", "k", "v"); err == nil {
+		t.Error("SetOption on unknown id should error")
+	}
+}
+
+func TestAddRollsBackOnSaveFailure(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv(storage.EnvDataDir, dir)
+	s := load(t, nil)
+	// Make persistence fail: a directory where targets.json should be.
+	if err := os.Mkdir(filepath.Join(dir, fileName), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Add("folder", "F", nil); err == nil {
+		t.Fatal("Add should report the save failure")
+	}
+	if got := s.List(); len(got) != 0 {
+		t.Errorf("failed Add must not linger in memory: %+v", got)
 	}
 }

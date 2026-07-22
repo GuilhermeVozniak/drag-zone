@@ -95,9 +95,10 @@ func (t Target) Option(key, def string) string {
 type TaskStatus string
 
 const (
-	TaskRunning TaskStatus = "running"
-	TaskDone    TaskStatus = "done"
-	TaskError   TaskStatus = "error"
+	TaskRunning   TaskStatus = "running"
+	TaskDone      TaskStatus = "done"
+	TaskError     TaskStatus = "error"
+	TaskCancelled TaskStatus = "cancelled"
 )
 
 // TaskState is a snapshot of an action execution, streamed to the frontend.

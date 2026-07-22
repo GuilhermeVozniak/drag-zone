@@ -20,15 +20,26 @@ func (a *App) DropBarAdd(p model.Payload) (dropbar.Item, error) {
 	// Stash app-owned copies, never references: dragging the item back out
 	// moves DragZone's copy and leaves the user's original untouched (see
 	// dropbar.StagePaths).
+	var newlyStaged []string
 	if p.Kind == model.ItemFiles && len(p.Paths) > 0 {
-		staged, err := dropbar.StagePaths(p.Paths)
+		orig := p.Paths
+		staged, err := dropbar.StagePaths(orig)
 		if err != nil {
 			return dropbar.Item{}, fmt.Errorf("staging dropped files: %w", err)
+		}
+		for i, s := range staged {
+			if s != orig[i] {
+				newlyStaged = append(newlyStaged, s)
+			}
 		}
 		p.Paths = staged
 	}
 	it, err := a.dropBar.Add(p)
 	if err != nil {
+		// The item was not stashed; delete the copies just made so they
+		// don't leak in the stage dir. Paths kept as-is by StagePaths
+		// (re-added items) still belong to their original item.
+		dropbar.Unstage(newlyStaged)
 		return dropbar.Item{}, err
 	}
 	a.emit(EventDropBarChanged, a.dropBar.List())

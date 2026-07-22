@@ -73,7 +73,11 @@ func NewRunner(cfg Config) *Runner {
 }
 
 // Run starts executing an action for the given event and returns the task ID.
+// A nil ctx (the app facade before Wails startup) falls back to Background.
 func (r *Runner) Run(ctx context.Context, act actions.Action, target model.Target, payload model.Payload, event string) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	var exec func(context.Context, actions.Invocation) (actions.Result, error)
 	switch event {
 	case model.EventClicked:
@@ -133,9 +137,9 @@ func (r *Runner) Run(ctx context.Context, act actions.Action, target model.Targe
 
 func (r *Runner) execute(ctx context.Context, exec func(context.Context, actions.Invocation) (actions.Result, error), inv actions.Invocation, id string) {
 	res, err := r.invoke(ctx, exec, inv)
-	if ctx.Err() == context.Canceled {
-		err = fmt.Errorf("cancelled")
-	}
+	// A cancelled task is not a failure: no error banner, no failure
+	// notification, no Basso — the user asked for it to stop.
+	cancelled := ctx.Err() == context.Canceled
 
 	r.mu.Lock()
 	state := r.tasks[id]
@@ -144,10 +148,13 @@ func (r *Runner) execute(ctx context.Context, exec func(context.Context, actions
 		return
 	}
 	state.FinishedAt = time.Now()
-	if err != nil {
+	switch {
+	case cancelled:
+		state.Status = model.TaskCancelled
+	case err != nil:
 		state.Status = model.TaskError
 		state.Error = err.Error()
-	} else {
+	default:
 		state.Status = model.TaskDone
 		state.Percent = 100
 		if res.Message != "" {
@@ -162,8 +169,11 @@ func (r *Runner) execute(ctx context.Context, exec func(context.Context, actions
 	if r.cfg.OnTask != nil {
 		r.cfg.OnTask(state.Status)
 	}
-	if err == nil && res.URL != "" && r.cfg.OnResultURL != nil {
+	if !cancelled && err == nil && res.URL != "" && r.cfg.OnResultURL != nil {
 		r.cfg.OnResultURL(title, res.URL)
+	}
+	if cancelled {
+		return
 	}
 
 	if err != nil {

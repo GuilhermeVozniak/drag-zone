@@ -72,6 +72,29 @@ describe("TaskList", () => {
     expect(line.className).toContain("text-red-400");
   });
 
+  it("shows a cancelled task neutrally, never as an error", () => {
+    render(
+      <TaskList
+        tasks={[task({ status: "cancelled", title: "Zip" })]}
+        targets={targets}
+        specFor={specFor}
+      />,
+    );
+    const line = screen.getByText("Zip — cancelled");
+    expect(line).toBeInTheDocument();
+    expect(line.className).not.toContain("text-red-400");
+  });
+
+  it("offers dismiss (not cancel) for a cancelled task", async () => {
+    const user = userEvent.setup();
+    render(
+      <TaskList tasks={[task({ status: "cancelled" })]} targets={targets} specFor={specFor} />,
+    );
+    await user.click(screen.getByTitle("Dismiss"));
+    expect(backend.tasks.dismiss).toHaveBeenCalledWith("k1");
+    expect(backend.tasks.cancel).not.toHaveBeenCalled();
+  });
+
   it("caps the list at four rows", () => {
     const many = Array.from({ length: 6 }, (_, i) => task({ id: `k${i}`, title: `Task ${i}` }));
     render(<TaskList tasks={many} targets={targets} specFor={specFor} />);
