@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DropBarTile } from "@/features/dropbar/DropBarTile";
 import { backend, type DropBarItem } from "@/lib/backend";
+import { DROPBAR_MIME } from "@/lib/dnd";
 
 vi.mock("@/lib/backend");
 
@@ -170,14 +171,43 @@ describe("DropBarTile", () => {
     expect(backend.dragOut).toHaveBeenCalledWith("stack2");
   });
 
-  it("highlights the tile while a combinable Drop Bar item drags over it", () => {
+  // jsdom rects are zero-sized, which isCombineHover treats as "center".
+  it("highlights the tile while a combinable file drag hovers its center", () => {
     const item = filesItem({ paths: ["/unique/dropbartile/target.txt"], label: "target.txt" });
     render(<DropBarTile item={item} onRemove={vi.fn()} />);
     const tile = screen.getByText("target.txt").parentElement as HTMLElement;
-    fireEvent.dragEnter(tile);
+    fireEvent.dragOver(tile, { dataTransfer: { types: ["Files"] } });
     expect(tile.className).toContain("ring-2");
     fireEvent.dragLeave(tile);
     expect(tile.className).not.toContain("ring-2");
+  });
+
+  it("does not highlight for a text/URL item drag (those reorder, never combine)", () => {
+    const item = filesItem({ paths: ["/unique/dropbartile/target.txt"], label: "target.txt" });
+    render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    const tile = screen.getByText("target.txt").parentElement as HTMLElement;
+    fireEvent.dragOver(tile, { dataTransfer: { types: [DROPBAR_MIME] } });
+    expect(tile.className).not.toContain("ring-2");
+  });
+
+  it("does not highlight over a tile's edge zones (a drop there stashes instead)", () => {
+    const item = filesItem({ paths: ["/unique/dropbartile/target.txt"], label: "target.txt" });
+    render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    const tile = screen.getByText("target.txt").parentElement as HTMLElement;
+    vi.spyOn(tile, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      width: 100,
+    } as DOMRect);
+    // jsdom ignores clientX in the DragEvent init: set it by hand.
+    const over = (clientX: number) => {
+      const evt = createEvent.dragOver(tile, { dataTransfer: { types: ["Files"] } });
+      Object.defineProperty(evt, "clientX", { value: clientX });
+      fireEvent(tile, evt);
+    };
+    over(10);
+    expect(tile.className).not.toContain("ring-2");
+    over(50);
+    expect(tile.className).toContain("ring-2");
   });
 
   it("does not highlight a non-files tile on drag-over (only stacks of files combine)", () => {

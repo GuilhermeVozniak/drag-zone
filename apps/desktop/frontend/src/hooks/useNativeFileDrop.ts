@@ -68,11 +68,31 @@ export function useNativeFileDrop(dropBarItems: DropBarItem[] = []) {
             backend.dropBar
               .combine(dropId, sourceId)
               .catch((err) => reportError("Couldn't combine", err));
-          } else {
-            // Not a drag-out-in-progress (e.g. an external Finder file
-            // dropped over an existing tile): fall back to the plain stash.
+          } else if (sourceId === dropId) {
+            // An item dropped back onto its own tile: plain stash, never
+            // combine it into itself.
             backend.dropBar
               .add({ kind: "files", paths })
+              .catch((err) => reportError("Couldn't stash", err));
+          } else {
+            // External files (no drag-out in flight): dropping on top of a
+            // file stack's center merges into it; landing on a tile's edge
+            // stashes a new item at that spot, like Dropzone.
+            const target = itemsRef.current.find((item) => item.id === dropId);
+            backend.dropBar
+              .add({ kind: "files", paths })
+              .then((added) => {
+                if (!added?.id) return;
+                if (target?.kind === "files" && zone === "center") {
+                  return backend.dropBar.combine(dropId, added.id);
+                }
+                if (zone !== "center") {
+                  const targetIdx = itemsRef.current.findIndex((i) => i.id === dropId);
+                  if (targetIdx >= 0) {
+                    return backend.dropBar.move(added.id, targetIdx + (zone === "after" ? 1 : 0));
+                  }
+                }
+              })
               .catch((err) => reportError("Couldn't stash", err));
           }
           return;

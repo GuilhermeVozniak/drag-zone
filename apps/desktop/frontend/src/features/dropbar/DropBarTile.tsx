@@ -18,6 +18,17 @@ function itemIcon(item: DropBarItem) {
   return Type;
 }
 
+// A hover combines only over a file tile's center (the outer 30% edges
+// reorder/stash instead, mirroring useNativeFileDrop's routing) and never
+// for internal text/URL drags, which can't join a stack.
+function isCombineHover(e: React.DragEvent, isFiles: boolean) {
+  if (!isFiles || e.dataTransfer.types.includes(DROPBAR_MIME)) return false;
+  const rect = e.currentTarget.getBoundingClientRect();
+  if (rect.width <= 0) return true;
+  const rel = (e.clientX - rect.left) / rect.width;
+  return rel >= 0.3 && rel <= 0.7;
+}
+
 /**
  * Fanned, photo-bordered thumbnails for a stack, like Dropzone's stacks.
  * Hovering the tile spreads the fan and lifts + highlights the front image, so
@@ -143,17 +154,15 @@ export function DropBarTile({ item, onRemove, onReorderRequest }: DropBarTilePro
           // Best-effort visual hint for the combine drop target: WebKit
           // forwards a native drag hovering the window as ordinary drag
           // events. The actual combine happens through the native file-drop
-          // path (see useNativeFileDrop); this only drives the highlight.
-          // HTML5 drags of text/URL items (DROPBAR_MIME) are accepted too:
-          // dropping one on a tile's left/right half reorders the bar.
+          // path (see useNativeFileDrop); this only drives the highlight,
+          // which mirrors that routing: center of a file tile combines,
+          // the outer edges (and text/URL drags) never do.
           onDragOver={(e) => {
             if (isFiles || e.dataTransfer.types.includes(DROPBAR_MIME)) e.preventDefault();
+            setCombineHover(isCombineHover(e, isFiles));
           }}
           onDragEnter={(e) => {
-            if (isFiles) {
-              e.preventDefault();
-              setCombineHover(true);
-            }
+            if (isFiles) e.preventDefault();
           }}
           onDragLeave={() => setCombineHover(false)}
           onDrop={(e) => {
