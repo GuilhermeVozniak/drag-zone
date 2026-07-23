@@ -31,16 +31,17 @@ function isCombineHover(e: React.DragEvent, isFiles: boolean) {
 
 /**
  * Fanned, photo-bordered thumbnails for a stack, like Dropzone's stacks.
- * Hovering the tile spreads the fan and lifts + highlights the front image, so
- * it's clear which stack you're about to grab. paths[0] is drawn on top.
- * Each thumbnail is clickable: it opens that one file in the default app
- * (Quick Look of the whole stack stays on the tile's own click), so a click
+ * Hovering the tile spreads the fan; the thumbnail under the cursor lifts
+ * to the front and highlights, so a click opens exactly that file (Quick
+ * Look of the whole stack stays on the tile's own click), and so a click
  * must not bubble up into the tile's drag-out or Quick Look handlers.
+ * paths[0] is drawn on top when nothing is hovered.
  */
 function StackFan({ paths }: { paths: string[] }) {
   const first = useFileIcon(paths[0]);
   const second = useFileIcon(paths[1]);
   const third = useFileIcon(paths[2]);
+  const [focused, setFocused] = useState<number | null>(null);
   const layers = [
     {
       icon: third,
@@ -58,8 +59,7 @@ function StackFan({ paths }: { paths: string[] }) {
       icon: first,
       path: paths[0],
       base: "rotate-0",
-      hover:
-        "group-hover:-translate-y-1 group-hover:scale-[1.12] group-hover:ring-2 group-hover:ring-sky-400/80",
+      hover: "group-hover:-translate-y-1",
     },
   ].filter((l) => l.icon);
   if (layers.length === 0) {
@@ -77,7 +77,11 @@ function StackFan({ paths }: { paths: string[] }) {
             e.stopPropagation();
             if (l.path) backend.openPath(l.path);
           }}
-          className={`pointer-events-auto absolute inset-0 m-auto max-h-[50px] max-w-[50px] cursor-pointer rounded-[3px] border-2 border-white bg-white object-contain shadow-sm transition-transform duration-150 ease-out ${l.base} ${l.hover}`}
+          onMouseEnter={() => setFocused(i)}
+          onMouseLeave={() => setFocused((f) => (f === i ? null : f))}
+          className={`pointer-events-auto absolute inset-0 m-auto max-h-[50px] max-w-[50px] cursor-pointer rounded-[3px] border-2 border-white bg-white object-contain shadow-sm transition-transform duration-150 ease-out ${l.base} ${l.hover} ${
+            focused === i ? "z-10 -translate-y-1 scale-[1.12] ring-2 ring-sky-400/80" : ""
+          }`}
         />
       ))}
     </div>

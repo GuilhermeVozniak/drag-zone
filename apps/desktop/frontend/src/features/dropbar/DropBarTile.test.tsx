@@ -133,6 +133,38 @@ describe("DropBarTile", () => {
     expect(onRemove).toHaveBeenCalledWith("i4");
   });
 
+  it("raises the hovered stack thumbnail to the front so it can be picked", async () => {
+    (backend.fileIcon as ReturnType<typeof vi.fn>).mockResolvedValue("QQ==");
+    const item = filesItem({
+      paths: ["/unique/dropbartile/hover-front.png", "/unique/dropbartile/hover-back.png"],
+      label: "2 Items",
+      id: "stack3",
+    });
+    const { container } = render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    await waitFor(() => expect(container.querySelectorAll("img")).toHaveLength(2));
+    const [back, front] = container.querySelectorAll("img");
+
+    // Nothing hovered: no thumbnail is raised.
+    expect(front.className).not.toContain("z-10");
+    expect(back.className).not.toContain("z-10");
+
+    // Hovering the back thumbnail lifts and highlights it; the front one
+    // stays put. Leaving drops it back into the fan.
+    fireEvent.mouseEnter(back);
+    expect(back.className).toContain("z-10");
+    expect(back.className).toContain("ring-2");
+    expect(front.className).not.toContain("z-10");
+    fireEvent.mouseLeave(back);
+    expect(back.className).not.toContain("z-10");
+
+    // Moving straight from one thumbnail to another keeps the newest focus.
+    fireEvent.mouseEnter(back);
+    fireEvent.mouseEnter(front);
+    fireEvent.mouseLeave(back);
+    expect(front.className).toContain("z-10");
+    expect(back.className).not.toContain("z-10");
+  });
+
   it("clicking a fanned stack thumbnail opens that exact file in the default app", async () => {
     (backend.fileIcon as ReturnType<typeof vi.fn>).mockResolvedValue("QQ==");
     const user = userEvent.setup();
