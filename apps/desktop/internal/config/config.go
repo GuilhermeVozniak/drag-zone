@@ -85,10 +85,16 @@ func (st *Store) Get() Settings {
 	return st.s
 }
 
-// Set replaces the settings and persists them.
+// Set replaces the settings and persists them. On a persistence failure the
+// in-memory settings roll back, so Get never reports values that didn't save.
 func (st *Store) Set(s Settings) error {
 	st.mu.Lock()
 	defer st.mu.Unlock()
+	prev := st.s
 	st.s = s
-	return storage.Save(fileName, s)
+	if err := storage.Save(fileName, s); err != nil {
+		st.s = prev
+		return err
+	}
+	return nil
 }

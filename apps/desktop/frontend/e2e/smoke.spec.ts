@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // Proves the whole e2e pipeline works end to end: `vite build --mode e2e`
 // resolves wailsjs to the stateful mock (e2e/mock/backend.ts) instead of

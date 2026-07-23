@@ -250,9 +250,12 @@ func (a *App) InstallCLI() error {
 	if err := exec.Command("cp", "-f", src, cliInstallPath).Run(); err == nil {
 		return nil
 	}
-	script := fmt.Sprintf(
-		"do shell script \"mkdir -p /usr/local/bin && cp -f '%s' '%s' && chmod 755 '%s'\" with administrator privileges",
-		src, cliInstallPath, cliInstallPath)
+	// Quote for /bin/sh inside the AppleScript string, then let %q produce
+	// the AppleScript string literal (escaping backslashes and quotes).
+	shQuote := func(s string) string { return "'" + strings.ReplaceAll(s, "'", `'"'"'`) + "'" }
+	shell := fmt.Sprintf("mkdir -p /usr/local/bin && cp -f %s %s && chmod 755 %s",
+		shQuote(src), shQuote(cliInstallPath), shQuote(cliInstallPath))
+	script := fmt.Sprintf("do shell script %q with administrator privileges", shell)
 	if out, err := exec.Command("osascript", "-e", script).CombinedOutput(); err != nil {
 		return fmt.Errorf("installing dz: %s", strings.TrimSpace(string(out)))
 	}

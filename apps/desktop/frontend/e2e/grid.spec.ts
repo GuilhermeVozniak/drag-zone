@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // Drives the real rendered grid UI (GridPanel/AddTargetDialog/TaskList)
 // against the stateful mock backend (e2e/mock/backend.ts) — no native OS

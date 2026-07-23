@@ -117,9 +117,14 @@ func (a *App) taskFeedback(status model.TaskStatus) {
 			a.applyStatusProgress() // still busy, keep the running state
 			return
 		}
-		if status == model.TaskError {
+		switch status {
+		case model.TaskError:
 			platform.SetStatusState(platform.StatusFailure)
-		} else {
+		case model.TaskCancelled:
+			// No success/failure flash for a user-requested stop.
+			platform.SetStatusState(platform.StatusNormal)
+			return
+		default:
 			platform.SetStatusState(platform.StatusSuccess)
 		}
 		time.AfterFunc(2*time.Second, func() {

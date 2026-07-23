@@ -90,8 +90,14 @@ func (s *Store) Add(p model.Payload) (Item, error) {
 		AddedAt: time.Now(),
 	}
 	s.items = append(s.items, it)
+	if err := s.save(); err != nil {
+		// Roll back so in-memory state matches what persisted: callers
+		// treat the error as "not added" (and e.g. unstage its files).
+		s.items = s.items[:len(s.items)-1]
+		return Item{}, err
+	}
 	it.Paths = slices.Clone(it.Paths)
-	return it, s.save()
+	return it, nil
 }
 
 // Separate splits a stack into one item per file, in place of the stack.
@@ -126,9 +132,11 @@ func (s *Store) CombineAll() error {
 	defer s.mu.Unlock()
 	var paths []string
 	var rest []Item
+	locked := false
 	for _, it := range s.items {
 		if it.Kind == model.ItemFiles {
 			paths = append(paths, it.Paths...)
+			locked = locked || it.Locked
 		} else {
 			rest = append(rest, it)
 		}
@@ -142,6 +150,7 @@ func (s *Store) CombineAll() error {
 		Kind:    model.ItemFiles,
 		Paths:   paths,
 		Label:   labelFor(payload),
+		Locked:  locked, // a locked constituent keeps the merged stack locked
 		AddedAt: time.Now(),
 	}
 	s.items = append(rest, stack)
@@ -181,6 +190,8 @@ func (s *Store) Combine(targetID, sourceID string) error {
 	payload := model.Payload{Kind: model.ItemFiles, Paths: merged}
 	s.items[targetIdx].Paths = merged
 	s.items[targetIdx].Label = labelFor(payload)
+	// A locked constituent keeps the merged stack locked.
+	s.items[targetIdx].Locked = target.Locked || source.Locked
 	s.items = slices.DeleteFunc(s.items, func(it Item) bool { return it.ID == sourceID })
 	return s.save()
 }
@@ -260,8 +271,11 @@ func labelFor(p model.Payload) string {
 	case p.Kind == model.ItemURL:
 		return p.Text
 	default:
-		if len(p.Text) > 40 {
-			return p.Text[:40] + "…"
+		// Truncate by runes, not bytes: slicing a string mid-rune yields
+		// invalid UTF-8 in the label (and in dropbar.json).
+		r := []rune(p.Text)
+		if len(r) > 40 {
+			return string(r[:40]) + "…"
 		}
 		return p.Text
 	}

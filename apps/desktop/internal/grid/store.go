@@ -88,8 +88,14 @@ func (s *Store) Add(actionID, label string, options map[string]string) (model.Ta
 		Position: len(s.targets),
 	}
 	s.targets = append(s.targets, t)
+	if err := s.save(); err != nil {
+		// Roll back so in-memory state matches what persisted: callers
+		// treat the error as "not added".
+		s.targets = s.targets[:len(s.targets)-1]
+		return model.Target{}, err
+	}
 	t.Options = cloneOptions(t.Options)
-	return t, s.save()
+	return t, nil
 }
 
 // Update replaces the stored target with the same ID.

@@ -38,9 +38,11 @@ export function TaskList({ tasks, targets, specFor }: TaskListProps) {
               >
                 {task.status === "error"
                   ? `${task.title}: ${task.error}`
-                  : task.detail
-                    ? `${task.title} — ${task.detail}`
-                    : `${task.title}…`}
+                  : task.status === "cancelled"
+                    ? `${task.title} — cancelled`
+                    : task.detail
+                      ? `${task.title} — ${task.detail}`
+                      : `${task.title}…`}
               </p>
               <Progress
                 value={task.percent < 0 ? null : task.percent}

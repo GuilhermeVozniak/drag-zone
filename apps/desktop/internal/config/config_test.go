@@ -2,6 +2,8 @@ package config
 
 import (
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"dragzone/internal/storage"
@@ -64,5 +66,26 @@ func TestLoadDefaultsThenSetPersists(t *testing.T) {
 	// Unset fields keep their default (merge over Defaults()).
 	if st2.Get().GlobalShortcut != "F3" {
 		t.Errorf("defaults not preserved on reload: %+v", st2.Get())
+	}
+}
+
+func TestSetRollsBackOnSaveFailure(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv(storage.EnvDataDir, dir)
+	st, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Make persistence fail: a directory where settings.json should be.
+	if err := os.Mkdir(filepath.Join(dir, fileName), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	s := st.Get()
+	s.GridColumns = 8
+	if err := st.Set(s); err == nil {
+		t.Fatal("Set should report the save failure")
+	}
+	if got := st.Get().GridColumns; got != 4 {
+		t.Errorf("failed Set must roll back in-memory settings; GridColumns = %d", got)
 	}
 }
