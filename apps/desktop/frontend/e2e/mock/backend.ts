@@ -701,7 +701,24 @@ export async function CLIInstalled(): Promise<boolean> {
 
 export async function InstallCLI(): Promise<void> {}
 
+// Test hook: `?update=1` makes CheckForUpdates report a newer version with a
+// DMG asset, so updates.spec.ts can drive the in-place install flow.
+const forceUpdateAvailable =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("update") === "1";
+
 export async function CheckForUpdates(): Promise<UpdateInfo> {
+  if (forceUpdateAvailable) {
+    return {
+      version: "0.1.0",
+      latest: "9.9.9",
+      available: true,
+      url: "https://github.com/GuilhermeVozniak/drag-zone/releases/tag/v9.9.9",
+      downloadUrl:
+        "https://github.com/GuilhermeVozniak/drag-zone/releases/download/v9.9.9/dragzone_9.9.9_darwin_universal.dmg",
+      publishedAt: "2026-07-23T00:00:00Z",
+    };
+  }
   return {
     version: "0.1.0",
     latest: "0.1.0",
@@ -710,6 +727,24 @@ export async function CheckForUpdates(): Promise<UpdateInfo> {
     downloadUrl: "",
     publishedAt: "",
   };
+}
+
+export async function InstallUpdate(): Promise<void> {
+  // Mirror the real installer (app_update.go): progress stages stream via
+  // update:progress, ending in "done" (which precedes a relaunch).
+  const stages: [string, number][] = [
+    ["checking", -1],
+    ["downloading", 20],
+    ["downloading", 65],
+    ["downloading", 100],
+    ["verifying", -1],
+    ["installing", -1],
+    ["done", 100],
+  ];
+  for (const [stage, percent] of stages) {
+    EventsEmit("update:progress", { stage, percent, version: "9.9.9" });
+    await new Promise((r) => setTimeout(r, 30));
+  }
 }
 
 export async function GetVersion(): Promise<string> {

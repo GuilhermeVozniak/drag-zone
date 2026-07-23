@@ -49,7 +49,7 @@ export const backend = {
   console: { lines: afn(), clear: afn() },
   addons: { list: afn(), install: afn() },
   cli: { installed: afn(), install: afn() },
-  updates: { check: afn(), version: afn() },
+  updates: { check: afn(), version: afn(), install: afn() },
   dialogs: { chooseFolder: afn(), chooseApplication: afn(), chooseBundle: afn() },
   dragOut: afn(),
   fileIcon: afn(),
@@ -87,6 +87,7 @@ export const events = {
   onDropBarDragEnded: sub("dropbar:dragended"),
   onConsoleChanged: sub("console:changed"),
   onConsoleError: sub("console:error"),
+  onUpdateProgress: sub("update:progress"),
 };
 
 // --- test helpers ---
