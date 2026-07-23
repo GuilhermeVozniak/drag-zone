@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -117,7 +118,7 @@ func (a *App) installUpdate(ctx context.Context) {
 	a.updateProgress("done", 100, info.Latest, "")
 	// Relaunch only inside a real Wails runtime (a.ctx is nil in tests).
 	if a.ctx != nil {
-		relaunchApp(a.ctx, currentApp)
+		a.relaunchApp(currentApp)
 	}
 }
 
@@ -327,13 +328,27 @@ func replaceAppPrivileged(newApp, currentApp string) error {
 }
 
 // relaunchApp starts the freshly installed copy and quits this process.
-// No-op outside a running Wails app (tests).
-func relaunchApp(ctx context.Context, appPath string) {
-	if ctx == nil {
+// A detached shell waits for this process to exit before opening the new
+// copy: two instances must never run at once (each registers its own
+// menu-bar icon). No-op outside a running Wails app (tests).
+func (a *App) relaunchApp(appPath string) {
+	if a.ctx == nil {
 		return
 	}
 	// Small delay so the final progress event reaches the frontend first.
 	time.Sleep(300 * time.Millisecond)
-	_ = exec.Command("open", "-n", appPath).Run()
-	runtime.Quit(ctx)
+	script := `while kill -0 "$1" 2>/dev/null; do sleep 0.1; done; open -n "$2"`
+	// Never Wait: this process is about to exit and the shell reparents to
+	// launchd, opening the new copy as soon as the old one is gone.
+	if err := exec.Command("/bin/sh", "-c", script, "sh", strconv.Itoa(os.Getpid()), appPath).Start(); err != nil {
+		a.updateProgress("error", 0, "", fmt.Sprintf("relaunching: %v", err))
+		return
+	}
+	// runtime.Quit routes through beforeClose, which swallows the request
+	// while settings is open — and updates install from the Settings tab,
+	// so without this the old process stays alive next to the new one.
+	a.dragMu.Lock()
+	a.settingsOpen = false
+	a.dragMu.Unlock()
+	runtime.Quit(a.ctx)
 }

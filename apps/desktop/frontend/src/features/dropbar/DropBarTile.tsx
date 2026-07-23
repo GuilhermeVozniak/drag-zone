@@ -29,62 +29,94 @@ function isCombineHover(e: React.DragEvent, isFiles: boolean) {
   return rel >= 0.3 && rel <= 0.7;
 }
 
+// Stacks fan out at most this many thumbnails; the count badge covers the
+// rest.
+const STACK_FAN_MAX = 7;
+
 /**
  * Fanned, photo-bordered thumbnails for a stack, like Dropzone's stacks.
- * Hovering the tile spreads the fan; the thumbnail under the cursor lifts
- * to the front and highlights, so a click opens exactly that file (Quick
- * Look of the whole stack stays on the tile's own click), and so a click
- * must not bubble up into the tile's drag-out or Quick Look handlers.
- * paths[0] is drawn on top when nothing is hovered.
+ * Hovering the fan spreads it; the thumbnail under the cursor lifts to the
+ * front and highlights, so a click opens exactly that file (Quick Look of
+ * the whole stack stays on the tile's own click), and so a click must not
+ * bubble up into the tile's drag-out or Quick Look handlers. paths[0] is
+ * drawn on top when nothing is hovered.
  */
 function StackFan({ paths }: { paths: string[] }) {
-  const first = useFileIcon(paths[0]);
-  const second = useFileIcon(paths[1]);
-  const third = useFileIcon(paths[2]);
+  const [spread, setSpread] = useState(false);
   const [focused, setFocused] = useState<number | null>(null);
-  const layers = [
-    {
-      icon: third,
-      path: paths[2],
-      base: "-rotate-[10deg] -translate-x-2",
-      hover: "group-hover:-rotate-[18deg] group-hover:-translate-x-4 group-hover:-translate-y-0.5",
-    },
-    {
-      icon: second,
-      path: paths[1],
-      base: "rotate-[8deg] translate-x-2",
-      hover: "group-hover:rotate-[18deg] group-hover:translate-x-4 group-hover:-translate-y-0.5",
-    },
-    {
-      icon: first,
-      path: paths[0],
-      base: "rotate-0",
-      hover: "group-hover:-translate-y-1",
-    },
-  ].filter((l) => l.icon);
-  if (layers.length === 0) {
-    return <Files className="size-7 text-neutral-300" strokeWidth={1.5} />;
-  }
+  const shown = paths.slice(0, STACK_FAN_MAX);
+  // k is a layer's stack position: 0 is the front item; deeper layers
+  // alternate right/left with growing depth (1,1,2,2,3,3).
+  const transform = (k: number) => {
+    if (k === 0) {
+      return spread || focused === k ? "translateY(-4px)" : "";
+    }
+    const side = k % 2 === 1 ? 1 : -1;
+    const depth = Math.ceil(k / 2);
+    const open = spread || focused != null;
+    const deg = side * depth * (open ? 8 : 3);
+    const tx = side * depth * (open ? 9 : 4);
+    const ty = open ? -2 : 0;
+    return `rotate(${deg}deg) translate(${tx}px, ${ty}px)`;
+  };
   return (
-    <div className="relative size-[60px]">
-      {layers.map((l, i) => (
-        <img
-          key={i}
-          src={`data:image/png;base64,${l.icon}`}
-          alt=""
-          draggable={false}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (l.path) backend.openPath(l.path);
-          }}
-          onMouseEnter={() => setFocused(i)}
-          onMouseLeave={() => setFocused((f) => (f === i ? null : f))}
-          className={`pointer-events-auto absolute inset-0 m-auto max-h-[50px] max-w-[50px] cursor-pointer rounded-[3px] border-2 border-white bg-white object-contain shadow-sm transition-transform duration-150 ease-out ${l.base} ${l.hover} ${
-            focused === i ? "z-10 -translate-y-1 scale-[1.12] ring-2 ring-sky-400/80" : ""
-          }`}
+    <div
+      className="relative size-[60px]"
+      onMouseEnter={() => setSpread(true)}
+      onMouseLeave={() => {
+        setSpread(false);
+        setFocused(null);
+      }}
+    >
+      {/* Placeholder while icons load (and fallback if none resolve). */}
+      <Files className="absolute inset-0 m-auto size-7 text-neutral-300" strokeWidth={1.5} />
+      {/* Back-most layer first so paths[0] ends up last in DOM (on top). */}
+      {[...shown.keys()].reverse().map((k) => (
+        <StackThumb
+          key={shown[k]}
+          path={shown[k]}
+          transform={`${transform(k)}${focused === k ? " scale(1.12)" : ""}`}
+          focused={focused === k}
+          onFocus={() => setFocused(k)}
+          onBlur={() => setFocused((f) => (f === k ? null : f))}
         />
       ))}
     </div>
+  );
+}
+
+/** One thumbnail in a stack fan; resolves its own Finder icon. */
+function StackThumb({
+  path,
+  transform,
+  focused,
+  onFocus,
+  onBlur,
+}: {
+  path: string;
+  transform: string;
+  focused: boolean;
+  onFocus: () => void;
+  onBlur: () => void;
+}) {
+  const icon = useFileIcon(path);
+  if (!icon) return null;
+  return (
+    <img
+      src={`data:image/png;base64,${icon}`}
+      alt=""
+      draggable={false}
+      onClick={(e) => {
+        e.stopPropagation();
+        backend.openPath(path);
+      }}
+      onMouseEnter={onFocus}
+      onMouseLeave={onBlur}
+      style={{ transform }}
+      className={`pointer-events-auto absolute inset-0 m-auto max-h-[50px] max-w-[50px] cursor-pointer rounded-[3px] border-2 border-white bg-white object-contain shadow-sm transition-transform duration-150 ease-out ${
+        focused ? "z-10 ring-2 ring-sky-400/80" : ""
+      }`}
+    />
   );
 }
 

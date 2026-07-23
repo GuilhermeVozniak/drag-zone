@@ -157,12 +157,28 @@ describe("DropBarTile", () => {
     fireEvent.mouseLeave(back);
     expect(back.className).not.toContain("z-10");
 
-    // Moving straight from one thumbnail to another keeps the newest focus.
+    // Moving straight from one thumbnail to another keeps the newest focus
+    // (relatedTarget mirrors a real pointer move between the two).
     fireEvent.mouseEnter(back);
-    fireEvent.mouseEnter(front);
-    fireEvent.mouseLeave(back);
+    fireEvent.mouseLeave(back, { relatedTarget: front });
+    fireEvent.mouseEnter(front, { relatedTarget: back });
     expect(front.className).toContain("z-10");
     expect(back.className).not.toContain("z-10");
+  });
+
+  it("fans out at most 7 thumbnails even for larger stacks", async () => {
+    (backend.fileIcon as ReturnType<typeof vi.fn>).mockResolvedValue("QQ==");
+    const item = filesItem({
+      paths: Array.from({ length: 9 }, (_, i) => `/unique/dropbartile/big-stack-${i}.png`),
+      label: "9 Items",
+      id: "stack4",
+    });
+    const { container } = render(<DropBarTile item={item} onRemove={vi.fn()} />);
+    await waitFor(() => expect(container.querySelectorAll("img")).toHaveLength(7));
+    // The front of the stack (paths[0]) is the topmost thumbnail.
+    const imgs = container.querySelectorAll("img");
+    fireEvent.mouseEnter(imgs[imgs.length - 1]);
+    expect(imgs[imgs.length - 1].className).toContain("z-10");
   });
 
   it("clicking a fanned stack thumbnail opens that exact file in the default app", async () => {
