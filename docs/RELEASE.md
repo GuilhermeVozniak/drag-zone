@@ -76,6 +76,20 @@ The tag version (without the leading `v`) is injected into the binary via
 into the app bundle's `Info.plist`. Watch the run under the repo's Actions
 tab; on success a Release with the notarized `DragZone-<version>.dmg` appears.
 
+### How the app consumes a release (in-place auto-update)
+
+The app's Updates tab installs new releases itself: `CheckForUpdates` reads
+`releases/latest` for the `*_darwin_universal.dmg` asset, `InstallUpdate`
+(`app_update.go`) downloads it (GitHub hosts only), mounts it read-only,
+verifies the bundled app with `codesign --verify --deep --strict` plus a
+Team ID match against the running install, swaps bundles with rollback
+(privileged `osascript` fallback when `/Applications` isn't writable), and
+relaunches. Because the DMG the release workflow produces *is* the update
+payload, keep the asset naming contract in `packages/shared` intact — an
+unparseable or unsigned asset makes in-place updates fail (users can still
+download the DMG manually from the same tab).
+
+
 ## Notes & troubleshooting
 
 - **App Intents / Shortcuts extension:** `build/build-appintents.sh`

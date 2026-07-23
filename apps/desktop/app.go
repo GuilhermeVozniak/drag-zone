@@ -45,6 +45,7 @@ const (
 	EventDropBarDragEnded = "dropbar:dragended"
 	EventConsoleChanged   = "console:changed"
 	EventConsoleError     = "console:error"
+	EventUpdateProgress   = "update:progress"
 )
 
 // App wires the subsystems together and is the bindings facade exposed to the

@@ -20,6 +20,15 @@ export type OptionField = model.OptionField;
 export type TaskState = model.TaskState;
 export type DropBarItem = dropbar.Item;
 
+/** Progress of an in-place update install (see app_update.go); event-only,
+ * so not part of the generated models. */
+export interface UpdateProgress {
+  stage: "checking" | "downloading" | "verifying" | "installing" | "done" | "error";
+  percent: number;
+  version: string;
+  error?: string;
+}
+
 export type PayloadKind = "files" | "text" | "url";
 
 export interface Payload {
@@ -102,6 +111,7 @@ export const backend = {
   updates: {
     check: App.CheckForUpdates,
     version: App.GetVersion,
+    install: App.InstallUpdate,
   },
   dialogs: {
     chooseFolder: App.ChooseFolder,
@@ -150,4 +160,6 @@ export const events = {
   onConsoleChanged: (fn: (lines: ConsoleLine[]) => void) => EventsOn("console:changed", fn),
   /** A script run failed; Dropzone auto-opens the debug console on this. */
   onConsoleError: (fn: () => void) => EventsOn("console:error", fn),
+  /** An in-place update install progressed (downloading → installing → done). */
+  onUpdateProgress: (fn: (p: UpdateProgress) => void) => EventsOn("update:progress", fn),
 };

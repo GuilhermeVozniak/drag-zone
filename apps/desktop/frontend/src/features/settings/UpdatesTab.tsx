@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
-import { backend, type Settings, type UpdateInfo } from "@/lib/backend";
+import {
+  backend,
+  events,
+  type Settings,
+  type UpdateInfo,
+  type UpdateProgress,
+} from "@/lib/backend";
 import { SettingRow } from "./SettingRow";
 
 interface UpdatesTabProps {
@@ -14,6 +21,7 @@ export function UpdatesTab({ settings, update }: UpdatesTabProps) {
   const [info, setInfo] = useState<UpdateInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [install, setInstall] = useState<UpdateProgress | null>(null);
 
   const check = async () => {
     setChecking(true);
@@ -33,6 +41,18 @@ export function UpdatesTab({ settings, update }: UpdatesTabProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Track the in-place install's progress stream; errors leave the stream.
+  useEffect(
+    () =>
+      events.onUpdateProgress((p) => {
+        setInstall(p.stage === "error" ? null : p);
+        if (p.stage === "error") setError(p.error ?? "Update failed");
+      }),
+    [],
+  );
+
+  const installing = install != null && install.stage !== "done";
+
   return (
     <div className="flex flex-col gap-3.5">
       <SettingRow label="Automatically check for updates">
@@ -42,20 +62,26 @@ export function UpdatesTab({ settings, update }: UpdatesTabProps) {
         />
       </SettingRow>
       <div className="flex justify-center">
-        <Button size="sm" variant="secondary" disabled={checking} onClick={check}>
+        <Button size="sm" variant="secondary" disabled={checking || installing} onClick={check}>
           {checking ? "Checking…" : "Check Now"}
         </Button>
       </div>
-      {info && info.available && (
+      {info && info.available && !install && (
         <div className="flex flex-col items-center gap-2">
           <p className="text-center text-[12px] font-medium text-neutral-100">
             Version {info.latest} is available
             {info.publishedAt ? ` (${new Date(info.publishedAt).toLocaleDateString()})` : ""}
           </p>
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={() => backend.openURL(info.downloadUrl || info.url)}>
-              Download {info.latest}
-            </Button>
+            {info.downloadUrl ? (
+              <Button size="sm" onClick={() => backend.updates.install()}>
+                Update to {info.latest}
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => backend.openURL(info.url)}>
+                Download {info.latest}
+              </Button>
+            )}
             <button
               className="text-[11px] text-sky-400 hover:underline"
               onClick={() => backend.openURL(info.url)}
@@ -65,7 +91,29 @@ export function UpdatesTab({ settings, update }: UpdatesTabProps) {
           </div>
         </div>
       )}
-      {info && !info.available && (
+      {install && install.stage !== "done" && (
+        <div className="flex flex-col items-center gap-1.5">
+          <p className="text-[11px] text-neutral-300">
+            {install.stage === "downloading"
+              ? `Downloading ${install.version}… ${install.percent}%`
+              : install.stage === "verifying"
+                ? "Verifying signature…"
+                : install.stage === "installing"
+                  ? "Installing…"
+                  : "Preparing update…"}
+          </p>
+          <Progress
+            value={install.stage === "downloading" ? install.percent : null}
+            className="h-1.5 w-56 bg-black/40 [&>div]:bg-sky-500"
+          />
+        </div>
+      )}
+      {install?.stage === "done" && (
+        <p className="text-center text-[12px] font-medium text-green-400">
+          Updated to {install.version} — relaunching…
+        </p>
+      )}
+      {info && !info.available && !install && (
         <p className="text-center text-[11px] text-neutral-400">You're up to date.</p>
       )}
       {error && <p className="text-center text-[11px] text-red-400">{error}</p>}
